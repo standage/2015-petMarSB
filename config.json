@@ -1,0 +1,40 @@
+{
+    "meta" : {
+	    "authors": ["Camille Scott", "Weiming Li", "Titus Brown"],
+	    "description": "",
+	    "data_type": ["RNA-seq", "DNA-seq"],
+	    "date": 2015
+    },
+
+    "pipeline": {
+        "prefix": "petMarSB03",
+        "work_dir": "./_work",
+        
+        "trimmomatic": { 
+            "params": "LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:32" 
+        },
+
+        "blast": { 
+            "evalue": 0.000001,
+            "params": "",
+            "threads": 4
+        },
+
+        "khmer": { 
+            "ksize": 25,
+
+            "parallel": { 
+                "table_size": 2e7,
+                "n_tables": 4,
+                "coverage": 20,
+                "min_abund": 2
+            }, 
+
+            "pooled": { 
+                "table_size": 4e7,
+                "n_tables": 4,
+                "coverage": 20 
+            }
+        }
+    }
+}

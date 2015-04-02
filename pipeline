@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+
+from peasoup import task_funcs
+from peasoup.tasks import BlastTask, BlastFormatTask, CurlTask, GunzipTask, \
+                            UniProtQueryTask, TruncateFastaNameTask
+
+import argparse
+import os
+import sys
+import json
+import pandas as pd
+
+from doit.tools import run_once, create_folder, title_with_actions
+from doit.task import clean_targets, dict_to_task
+
+'''
+Define relevant task functions for pipeline
+'''
+
+@task_funcs.create_task_object
+def curl_task(row):
+    cmd = 'curl -o {target_fn} {url}'.format(target_fn=row.filename+'.gz', url=row.url)
+    tsk = task_funcs.general_cmdline_task([], [row.filename+'.gz'], cmd)
+    tsk['uptodate'] = [run_once]
+    return tsk
+
+
+@task_funcs.create_task_object
+def create_folder_task(folder, label=''):
+    
+    if not label:
+        label = 'create_folder_{folder}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [(create_folder, [folder])],
+            'targets': [folder],
+            'uptodate': [run_once],
+            'clean': [clean_targets] }
+
+def blast_task(row, config, assembly):
+
+    blast_threads = config['pipeline']['blast']['threads']
+    blast_params = config['pipeline']['blast']['params']
+    blast_evalue = config['pipeline']['blast']['evalue']
+
+    db_name = row.filename + '.db'
+
+    t1 = '{0}.x.{1}.tsv'.format(assembly, db_name)
+    t2 = '{0}.x.{1}.tsv'.format(db_name, assembly)
+
+
+    if row.db_type == 'prot':
+        yield BlastTask('blastx', assembly, db_name, t1,
+                        num_threads=blast_threads, evalue=blast_evalue,
+                        params=blast_params).tasks().next()
+        yield BlastTask('tblastn', row.filename, '{}.db'.format(assembly),
+                        t2, num_threads=blast_threads, evalue=blast_evalue,
+                        params=blast_params).tasks().next()
+    else:
+        yield BlastTask('blastn', assembly, db_name, t1,
+                        num_threads=blast_threads, evalue=blast_evalue,
+                        params=blast_params).tasks().next()
+        yield BlastTask('blastn', row.filename, '{}.db'.format(assembly),
+                        t2, num_threads=blast_threads, evalue=blast_evalue,
+                        params=blast_params).tasks().next()
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--resources-metadata', default='resources.json')
+    parser.add_argument('--config-metadata', default='config.json')
+    parser.add_argument('--print-tasks', dest='print_tasks', action='store_true', default=False)
+    args, doit_args = parser.parse_known_args()
+
+    with open(args.resources_metadata, 'r') as fp:
+        resources = json.load(fp)
+    with open(args.config_metadata, 'r') as fp:
+        print args.config_metadata
+        config = json.load(fp)
+
+    work_dir = config['pipeline']['work_dir']
+
+    resources_df = pd.DataFrame(resources).transpose()
+    #resources_df['filename'] = resources_df.filename.apply(lambda f: os.path.join(data_dir, f))
+
+    sample_df = resources_df[resources_df.meta_type == 'sample']
+
+    old_dir = os.getcwd()
+    try:
+        if not os.path.exists(work_dir):
+            os.makedirs(work_dir)
+        os.chdir(work_dir)
+
+        tasks = []
+        
+        tasks.extend(list(resources_df[resources_df.access == 'remote_file'].apply(
+                     lambda row: curl_task(row), axis=1, reduce=False)))
+
+        tasks.extend(list(resources_df[(resources_df.access == 'remote_query') & \
+                                       (resources_df.q_type == 'uniprot')].apply(
+                            lambda row: dict_to_task(task_funcs.uniprot_query_task(row.terms, row.filename+'.gz')), 
+                            axis=1, reduce=False)))
+
+        gunzip_df = resources_df[(resources_df.access == 'remote_query') |
+                                 (resources_df.access == 'remote_file')]
+        tasks.extend([dict_to_task(tsk) for tsk in 
+                      GunzipTask([(row.filename+'.gz', row.filename+'.tmp') for
+                                   _, row in gunzip_df.iterrows()]).tasks()])
+
+        tasks.extend([dict_to_task(tsk) for tsk in 
+                      TruncateFastaNameTask([(row.filename+'.tmp', row.filename) for
+                                            _, row in gunzip_df.iterrows()]).tasks()])
+
+        tasks.extend(list(resources_df[resources_df.meta_type == 'fasta_database'].apply(
+                        lambda row: dict_to_task(task_funcs.blast_format_task(
+                            row.filename, row.filename+'.db', row.db_type)),
+                        axis=1, reduce=False)))
+        
+        blast_tasks_iters = [blast_task(row, config, resources_df.ix['assembly'].filename) \
+                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') & 
+                                                   (resources_df.index != 'assembly')].iterrows()]
+        for tskiter in blast_tasks_iters:
+            tasks.extend([dict_to_task(tsk) for tsk in tskiter])
+        '''
+        build_task = bowtie2_build_task(resources_df.ix['assembly'])
+        index_basename_fn = build_task.targets[-1]
+        tasks.extend([build_task])
+
+        split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
+        tasks.extend(list(split_tasks))
+
+        align_tasks = sample_df.apply(bowtie2_align_task, args=(index_basename_fn,), axis=1, reduce=False)
+        tasks.extend(list(align_tasks))
+
+        align_files_df = task_funcs.get_task_files_df(align_tasks)
+        bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1'), axis=1)].target
+        bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz'), axis=1)].target
+        
+        sort_tasks = bam_files_to_sort.apply(samtools_sort_task)
+        tasks.extend(sort_tasks)
+
+        hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
+        express_tasks = hits_files.apply(express_task, args=(resources_df.ix['assembly'].filename,))
+        tasks.extend(express_tasks)
+        '''
+        if args.print_tasks:
+            for task in tasks:
+                print '-----\n', task, task.actions
+
+        task_funcs.run_tasks(tasks, doit_args)
+    
+    finally:
+        os.chdir(old_dir)
+
+main()
