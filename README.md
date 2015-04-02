@@ -1,8 +1,6 @@
-# README
+# 2015-petMarSB
 
-## 2015-petMarSB
-
-This is the new home of the lamprey transcriptome sequencing and assembly project. Contains pipelines for preprocessing data, running the assembly, and postprocressing that assembly, IPython notebooks for analyzing the results.
+This is the new home of the lamprey transcriptome sequencing and assembly project. Contains pipelines for preprocessing data, running the assembly, and postprocressing that assembly, IPython notebooks for analyzing the results. This is a cleaned up and more production-ready version of the work; previous (and messier) work is available at https://github.com/camillescott/2013-lamprey
 
 ## Getting Started
 
