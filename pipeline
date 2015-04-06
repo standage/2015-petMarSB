@@ -72,7 +72,7 @@ def blast_task(row, config, assembly):
 
 @task_funcs.create_task_object
 def link_files_task(src):
-    cmd = 'ln -s {src}'.format(src=src)
+    cmd = 'ln -fs {src}'.format(src=src)
     return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
     
 @task_funcs.create_task_object
@@ -86,11 +86,14 @@ def split_pairs_task(row):
 @task_funcs.create_task_object
 def bowtie2_align_task(row, idx_fn):
     target = '{sample}.x.{idx}'.format(sample=row.filename, idx=idx_fn)
+    encoding = '--' + row.phred
     if row.paired == False:
-        return task_funcs.bowtie2_align_task(idx_fn, target, singleton_fn=row.filename, num_threads=BOWTIE_THREADS)
+        return task_funcs.bowtie2_align_task(idx_fn, target, singleton_fn=row.filename, 
+                                             num_threads=BOWTIE_THREADS, encoding=encoding)
     else:
         return task_funcs.bowtie2_align_task(idx_fn, target, left_fn=row.filename+'.1',
-                                                right_fn=row.filename + '.2', num_threads=BOWTIE_THREADS)
+                                                right_fn=row.filename + '.2', singleton_fn=row.filename + '.0',
+                                                num_threads=BOWTIE_THREADS, encoding=encoding)
 
 @task_funcs.create_task_object
 def express_task(hits_fn, transcripts_fn):
