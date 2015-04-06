@@ -24,14 +24,14 @@
             "ksize": 25,
 
             "parallel": { 
-                "table_size": 2e9,
+                "table_size": 2e7,
                 "n_tables": 4,
                 "coverage": 20,
                 "min_abund": 2
             }, 
 
             "pooled": { 
-                "table_size": 4e9,
+                "table_size": 4e7,
                 "n_tables": 4,
                 "coverage": 20 
             }
