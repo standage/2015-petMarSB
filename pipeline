@@ -8,10 +8,14 @@ import argparse
 import os
 import sys
 import json
+import pprint
+
 import pandas as pd
 
 from doit.tools import run_once, create_folder, title_with_actions
 from doit.task import clean_targets, dict_to_task
+
+BOWTIE_THREADS = 1
 
 '''
 Define relevant task functions for pipeline
@@ -65,11 +69,43 @@ def blast_task(row, config, assembly):
                         t2, num_threads=blast_threads, evalue=blast_evalue,
                         params=blast_params).tasks().next()
 
+@task_funcs.create_task_object
+def link_files_task(src):
+    cmd = 'ln -s {src}'.format(src=src)
+    return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
+    
+@task_funcs.create_task_object
+def bowtie2_build_task(row):
+    return task_funcs.bowtie2_build_task(row.filename, row.filename.split('.fasta')[0])
+
+@task_funcs.create_task_object
+def split_pairs_task(row):
+    return task_funcs.split_pairs_task(row.filename)
+
+@task_funcs.create_task_object
+def bowtie2_align_task(row, idx_fn):
+    target = '{sample}.x.{idx}'.format(sample=row.filename, idx=idx_fn)
+    if row.paired == False:
+        return task_funcs.bowtie2_align_task(idx_fn, target, singleton_fn=row.filename, num_threads=BOWTIE_THREADS)
+    else:
+        return task_funcs.bowtie2_align_task(idx_fn, target, left_fn=row.filename+'.1',
+                                                right_fn=row.filename + '.2', num_threads=BOWTIE_THREADS)
+
+@task_funcs.create_task_object
+def express_task(hits_fn, transcripts_fn):
+    folder = hits_fn.split('.bam')[0]
+    return task_funcs.eXpress_task(transcripts_fn, hits_fn, folder)
+
+@task_funcs.create_task_object
+def samtools_sort_task(hits_fn):
+    return task_funcs.samtools_sort_task(hits_fn)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--resources-metadata', default='resources.json')
     parser.add_argument('--config-metadata', default='config.json')
-    parser.add_argument('--print-tasks', dest='print_tasks', action='store_true', default=False)
+    parser.add_argument('--print-tasks', action='store_true', default=False)
+    parser.add_argument('--local-file-dir', default='_data')
     args, doit_args = parser.parse_known_args()
 
     with open(args.resources_metadata, 'r') as fp:
@@ -79,10 +115,10 @@ def main():
         config = json.load(fp)
 
     work_dir = config['pipeline']['work_dir']
+    local_dir = os.path.abspath(args.local_file_dir)
 
     resources_df = pd.DataFrame(resources).transpose()
     #resources_df['filename'] = resources_df.filename.apply(lambda f: os.path.join(data_dir, f))
-
     sample_df = resources_df[resources_df.meta_type == 'sample']
 
     old_dir = os.getcwd()
@@ -121,10 +157,13 @@ def main():
                                                    (resources_df.index != 'assembly')].iterrows()]
         for tskiter in blast_tasks_iters:
             tasks.extend([dict_to_task(tsk) for tsk in tskiter])
-        '''
+        
         build_task = bowtie2_build_task(resources_df.ix['assembly'])
         index_basename_fn = build_task.targets[-1]
         tasks.extend([build_task])
+
+        link_tasks = sample_df.filename.apply(lambda fn: os.path.join(local_dir, fn)).apply(link_files_task)
+        tasks.extend(list(link_tasks))
 
         split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
         tasks.extend(list(split_tasks))
@@ -142,10 +181,10 @@ def main():
         hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
         express_tasks = hits_files.apply(express_task, args=(resources_df.ix['assembly'].filename,))
         tasks.extend(express_tasks)
-        '''
+        
         if args.print_tasks:
             for task in tasks:
-                print '-----\n', task, task.actions
+                print '-----\n', task, pprint.pprint(task.__dict__)
 
         task_funcs.run_tasks(tasks, doit_args)
     
