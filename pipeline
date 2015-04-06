@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 from peasoup import task_funcs
 from peasoup.tasks import BlastTask, BlastFormatTask, CurlTask, GunzipTask, \
@@ -109,10 +110,27 @@ def main():
     args, doit_args = parser.parse_known_args()
 
     with open(args.resources_metadata, 'r') as fp:
+        print('** Using data resources found in {c}'.format(c=args.resources_metadata), file=sys.stderr)
         resources = json.load(fp)
     with open(args.config_metadata, 'r') as fp:
-        print args.config_metadata
+        print('** Using config found in {c}'.format(c=args.config_metadata), file=sys.stderr)
         config = json.load(fp)
+
+    desc = '''
+####################################################################
+#
+# 2015 Petromyzon marinus (sea lamprey) de novo RNA-seq Pipeline
+#
+# * Authors: 
+#   {authors}
+#
+# * About: 
+#   {desc}
+#
+####################################################################
+'''.format(authors=', '.join(config['meta']['authors']), 
+           desc=config['meta']['description'])
+    print(desc, file=sys.stderr)
 
     work_dir = config['pipeline']['work_dir']
     local_dir = os.path.abspath(args.local_file_dir)
@@ -126,6 +144,7 @@ def main():
         if not os.path.exists(work_dir):
             os.makedirs(work_dir)
         os.chdir(work_dir)
+        print('** Current Working Directory: {w}'.format(w=os.getcwd()), file=sys.stderr)
 
         tasks = []
         
@@ -184,7 +203,8 @@ def main():
         
         if args.print_tasks:
             for task in tasks:
-                print '-----\n', task, pprint.pprint(task.__dict__)
+                print('-----\n', task)
+                pprint.pprint(task.__dict__)
 
         task_funcs.run_tasks(tasks, doit_args)
     
