@@ -89,7 +89,8 @@
         "meta_type": "sample",
         "paired": false,
         "strand": "+/-",
-        "tissue": "intest"
+        "tissue": "intest",
+	"phred": "phred33"
     },
     "Rope": {
         "access": "local_file",
@@ -101,7 +102,8 @@
         "meta_type": "sample",
         "paired": false,
         "strand": "+/-",
-        "tissue": "rope"
+        "tissue": "rope",
+	"phred": "phred33" 
     },
     "SPPI": {
         "access": "local_file",
@@ -113,7 +115,8 @@
         "meta_type": "sample",
         "paired": false,
         "strand": "+/-",
-        "tissue": "intest"
+        "tissue": "intest",
+	"phred": "phred33" 
     },
     "brain_paired": {
         "access": "local_file",
@@ -125,6 +128,7 @@
         "meta_type": "sample",
         "paired": true,
         "strand": "+/-",
-        "tissue": "brain"
+        "tissue": "brain",
+	"phred": "phred64"
     }
 }

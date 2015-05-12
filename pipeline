@@ -104,6 +104,51 @@ def express_task(hits_fn, transcripts_fn):
 def samtools_sort_task(hits_fn):
     return task_funcs.samtools_sort_task(hits_fn)
 
+@task_funcs.create_task_object
+def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_target_fn, label=''):
+    
+    import csv
+
+    def recursive_open(file_list, fp_dict, call, *args, **kwargs):
+        if not file_list:
+            call(fp_dict, *args, **kwargs)
+        else:
+            fn = file_list.pop()
+            with open(fn, 'rb') as fp:
+                fp_dict[fn] = fp
+                recursive_open(file_list, fp_dict, call, *args, **kwargs)
+
+    def cmd(results_files, tpm_target, eff_target, tot_target):
+        with open(tpm_target, 'wb') as tpm_fp, \
+             open(eff_target, 'wb') as eff_fp, \
+             open(tot_target, 'wb') as tot_fp:
+
+            def agg(fp_dict, tpm_fp, eff_fp, tot_fp):
+                readers = [csv.DictReader(fp, delimiter='\t') for fp in fp_dict.values()]
+                names = fp_dict.keys()
+
+                tpm_writer = csv.DictWriter(tpm_fp, ['target_id'] + names, delimiter='\t')
+                tpm_writer.writeheader()
+
+                for lines in zip(*readers):
+                    data = {fn:d['tpm'] for fn, d in zip(names, lines)}
+                    data['target_id'] = lines[0]['target_id']
+                    tpm_writer.writerow(data)
+            
+            fpd = {}
+            recursive_open(results_files, fpd, agg, tpm_fp, eff_fp, tot_fp)
+
+    if not label:
+        label = 'aggregate_express_task_' + os.path.basename(tpm_target_fn)
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [(cmd, [results_files, tpm_target_fn, eff_target_fn, tot_target_fn])],
+            'targets': [eff_target_fn, tpm_target_fn, tot_target_fn],
+            'clean': [clean_targets],
+            'file_dep': results_files}
+        
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--resources-metadata', default='resources-test.json')
@@ -203,6 +248,15 @@ def main():
         hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
         express_tasks = hits_files.apply(express_task, args=(resources_df.ix['assembly'].filename,))
         tasks.extend(express_tasks)
+
+        # The results.xprs file is always in position 1 in the targets --
+        # kludgy, fix this later...
+        express_files = [t.targets[1] for t in express_tasks]
+        pref = resources_df.ix['assembly'].name
+        agg_task = aggregate_express_task(express_files, '{pref}.eXpress.tpm.tsv'.format(pref=pref),
+                                                         '{pref}.eXpress.eff.tsv'.format(pref=pref),
+                                                         '{pref}.eXpress.tot.tsv'.format(pref=pref))
+        tasks.append(agg_task)
         
         if args.print_tasks:
             for task in tasks:
