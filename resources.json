@@ -92,11 +92,11 @@
     },
     "AB057JABXX_s_7_pe": {
         "access": "local_file",
-        "condition": "",
+        "condition": "larval",
         "db_type": "nucl",
         "filename": "AB057JABXX_s_7_pe.trim.fq.gz",
         "flowcell": "AB057",
-        "label": "brain_AB057",
+        "label": "brain_larval_AB057",
         "meta_type": "sample",
         "paired": true,
         "phred": "phred64",
@@ -174,12 +174,12 @@
         "db_type": "nucl",
         "filename": "BB0582ABXX_s_6_pe.trim.fq.gz",
         "flowcell": "BB058",
-        "label": "unknown_adult_1_BB058",
+        "label": "intestine_adult_1_BB058",
         "meta_type": "sample",
         "paired": true,
         "phred": "phred64",
         "strand": "+/-",
-        "tissue": "unknown"
+        "tissue": "intestine"
     },
     "BB0582ABXX_s_7_pe": {
         "access": "local_file",
@@ -187,12 +187,12 @@
         "db_type": "nucl",
         "filename": "BB0582ABXX_s_7_pe.trim.fq.gz",
         "flowcell": "BB058",
-        "label": "unknown_adult_2_BB058",
+        "label": "intestine_adult_2_BB058",
         "meta_type": "sample",
         "paired": true,
         "phred": "phred64",
         "strand": "+/-",
-        "tissue": "unknown"
+        "tissue": "intestine"
     },
     "BB0582ABXX_s_8_pe": {
         "access": "local_file",
