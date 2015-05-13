@@ -228,49 +228,59 @@ def main():
                       TruncateFastaNameTask([(row.filename+'.tmp', row.filename) for
                                             _, row in gunzip_df.iterrows()]).tasks()])
 
-        tasks.extend(list(resources_df[resources_df.meta_type == 'fasta_database'].apply(
+        tasks.extend(list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
                         lambda row: dict_to_task(task_funcs.blast_format_task(
                             row.filename, row.filename+'.db', row.db_type)),
                         axis=1, reduce=False)))
         
-        blast_tasks_iters = [blast_task(row, config, resources_df.ix['assembly'].filename) \
+        blast_iters = []
+        for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
+
+            blast_iters.extend([blast_task(row, config, fn) \
                         for _, row in resources_df[(resources_df.meta_type == 'fasta_database') & 
-                                                   (resources_df.index != 'assembly')].iterrows()]
-        for tskiter in blast_tasks_iters:
+                                                   (resources_df.meta_type != 'assembly')].iterrows()])
+
+        blast_iters.extend([blast_task(row, config, resources_df.ix['petMar2_cdna'].filename) \
+                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') & 
+                                                   (resources_df.filename != 'petMar2.cdna.fa')].iterrows()])
+
+        for tskiter in blast_iters:
             tasks.extend([dict_to_task(tsk) for tsk in tskiter])
         
-        build_task = bowtie2_build_task(resources_df.ix['assembly'])
-        index_basename_fn = build_task.targets[-1]
-        tasks.extend([build_task])
+        bt_build_tasks = resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False)
+        index_basenames = resources_df[resources_df.meta_type == 'assembly'].filename.apply(lambda fn: fn.rstrip('.fasta'))
+        tasks.extend(list(bt_build_tasks))
 
         link_tasks = sample_df.filename.apply(lambda fn: os.path.join(local_dir, fn)).apply(link_files_task)
         tasks.extend(list(link_tasks))
 
         split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
         tasks.extend(list(split_tasks))
-
-        align_tasks = sample_df.apply(bowtie2_align_task, args=(index_basename_fn,), axis=1, reduce=False)
-        tasks.extend(list(align_tasks))
-
-        align_files_df = task_funcs.get_task_files_df(align_tasks)
-        bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1'), axis=1)].target
-        bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz'), axis=1)].target
         
-        sort_tasks = bam_files_to_sort.apply(samtools_sort_task)
-        tasks.extend(sort_tasks)
+        for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
+            index_fn = assembly.rstrip('.fasta')
+            align_tasks = list(sample_df.apply(bowtie2_align_task, args=(index_fn,), axis=1, reduce=False))
+            tasks.extend(align_tasks)
 
-        hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
-        express_tasks = hits_files.apply(express_task, args=(resources_df.ix['assembly'].filename,))
-        tasks.extend(express_tasks)
+            align_files_df = task_funcs.get_task_files_df(align_tasks)
+            bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1'), axis=1)].target
+            bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz'), axis=1)].target
+        
+            sort_tasks = bam_files_to_sort.apply(samtools_sort_task)
+            tasks.extend(sort_tasks)
 
-        # The results.xprs file is always in position 1 in the targets --
-        # kludgy, fix this later...
-        express_files = [t.targets[1] for t in express_tasks]
-        pref = resources_df.ix['assembly'].name
-        agg_task = aggregate_express_task(express_files, '{pref}.eXpress.tpm.tsv'.format(pref=pref),
-                                                         '{pref}.eXpress.eff.tsv'.format(pref=pref),
-                                                         '{pref}.eXpress.tot.tsv'.format(pref=pref))
-        tasks.append(agg_task)
+            hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
+        
+            express_tasks = list(hits_files.apply(express_task, args=(assembly,)))
+            tasks.extend(express_tasks)
+
+            # The results.xprs file is always in position 1 in the targets --
+            # kludgy, fix this later...
+            express_files = [t.targets[1] for t in express_tasks]
+            agg_task = aggregate_express_task(express_files, '{pref}.eXpress.tpm.tsv'.format(pref=index_fn),
+                                                         '{pref}.eXpress.eff.tsv'.format(pref=index_fn),
+                                                         '{pref}.eXpress.tot.tsv'.format(pref=index_fn))
+            tasks.append(agg_task)
         
         if args.print_tasks:
             for task in tasks:
