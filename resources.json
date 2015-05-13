@@ -1100,14 +1100,22 @@
         "tissue": "brain"
     },
 
-    "assembly": {
+    "lamp03": {
         "access": "remote_file",
         "db_type": "nucl",
         "filename": "lamp03.fasta",
-        "meta_type": "fasta_database",
-        "name": "lamp00",
+        "meta_type": "assembly",
         "url": "http://athyra.ged.msu.edu/~cswelcher/lamprey/lamp03.fasta.gz"
     },
+
+    "lamp10": {
+        "access": "remote_file",
+        "db_type": "nucl",
+        "filename": "lamp10.fasta",
+        "meta_type": "assembly",
+        "url": "http://athyra.ged.msu.edu/~cswelcher/lamprey/lamp10.fasta.gz"
+    },
+
     "braFlo_pep": {
         "access": "remote_query",
         "db_type": "prot",

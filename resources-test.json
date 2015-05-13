@@ -15,13 +15,12 @@
         "q_type": "uniprot",
         "terms": "organism:7739+AND+keyword:1185"
     },
-    "assembly": {
+    "lamp99": {
         "access": "remote_file",
         "db_type": "nucl",
-        "filename": "lamp00.fasta",
-        "meta_type": "fasta_database",
-        "name": "lamp00",
-        "url": "http://athyra.ged.msu.edu/~cswelcher/lamprey/lamp00.fasta.gz"
+        "filename": "lamp99.fasta",
+        "meta_type": "assembly",
+        "url": "http://athyra.ged.msu.edu/~cswelcher/lamprey/lamp99.fasta.gz"
     },
     "danRer_pep": {
         "access": "remote_file",

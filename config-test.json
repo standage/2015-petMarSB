@@ -8,7 +8,7 @@
 
     "pipeline": {
         "prefix": "petMarSB03",
-        "work_dir": "./_work",
+        "work_dir": "_work",
         
         "trimmomatic": { 
             "params": "LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:32" 
