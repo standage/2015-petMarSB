@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 '''
 Libraries, functions, settings common to all petmar notebooks.
@@ -10,7 +11,12 @@ Libraries, functions, settings common to all petmar notebooks.
 
 from itertools import izip
 import os
-   
+import sys
+import json
+from collections import defaultdict as ddict
+from pprint import pprint
+import warnings
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib_venn import venn2, venn3, venn3_circles
@@ -19,19 +25,13 @@ import seaborn as sns
 
 import screed
 
-from peasoup import configtools
 from peasoup.plot import FigManager
 from peasoup.plot import plot_dendro
 
-from collections import defaultdict as ddict
-
 import pandas as pd
 from pandas import Categorical
-
-
 import numpy as np
 from numpy.random import rand
-
 from scipy import stats 
 from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
@@ -47,26 +47,48 @@ from IPython.display import HTML
 import mygene
 from bioservices import UniProt
 
-from pprint import pprint
-
-import warnings
-
 #######################
 # Functions, settings #
 #######################
 
-pd.set_option('display.max_rows', 200)
+res_fn = '../resources.json'
+cfg_fn = '../config.json'
+
+with open(res_fn, 'r') as fp:
+    print('** Using data resources found in {c}'.format(c=res_fn), file=sys.stderr)
+    resources = json.load(fp)
+with open(cfg_fn, 'r') as fp:
+    print('** Using config found in {c}'.format(c=cfg_fn), file=sys.stderr)
+    config = json.load(fp)
+
+resources_df = pd.DataFrame(resources).transpose()
+sample_df = resources_df[resources_df.meta_type == 'sample']
+prefix = config['pipeline']['prefix']
 
 def wdir(fn=''):
-    return os.path.join('../../work/', fn)
+    return os.path.join(os.path.join('../', config['pipeline']['work_dir']), fn)
+
+def len_func(fn):
+    fn = common.wdir(fn)
+    N = !grep -c ">" {fn}
+    return int(N[0])
+
+resources_df['size'] = resources_df[resources_df.meta_type != 'sample'].filename.apply(len_func)
+
 
 outfmt6 = ['sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', \
            'qend', 'sstart', 'send', 'evalue', 'bitscore']
 
-metadata = configtools.get_cfg('../../metadata.ini', '../../metadata.spec.ini')
+sample_df['tissue_c'] = Categorical(list(sample_df.tissue)).codes
+tissue_palette = sns.color_palette('Set3', n_colors=len(sample_df.groupby('tissue_c').count()))
+sample_df['color'] = sample_df.tissue_c.apply(lambda x: tissue_palette[x])sample_df['tissue_c'] = Categorical(list(sample_df.tissue)).codes
+tissue_palette = sns.color_palette('Set3', n_colors=len(sample_df.groupby('tissue_c').count()))
+sample_df['color'] = sample_df.tissue_c.apply(lambda x: tissue_palette[x])
 
 warnings.filterwarnings("ignore",category=DeprecationWarning)
 warnings.filterwarnings("ignore",category=UserWarning)
+
+pd.set_option('display.max_rows', 200)
 
 def uniprot_str(uid):
     tmp = uid.split('|')
