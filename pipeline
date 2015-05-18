@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import pprint
+from itertools import izip
 
 import pandas as pd
 
@@ -136,7 +137,7 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
                 tot_writer = csv.DictWriter(tot_fp, ['target_id'] + names, delimiter='\t')
                 tot_writer.writeheader()
 
-                for lines in zip(*readers):
+                for lines in izip(*readers):
                     data = {fn:d['tpm'] for fn, d in zip(names, lines)}
                     data['target_id'] = lines[0]['target_id']
                     tpm_writer.writerow(data)
@@ -263,14 +264,14 @@ def main():
             tasks.extend(align_tasks)
 
             align_files_df = task_funcs.get_task_files_df(align_tasks)
-            bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1'), axis=1)].target
-            bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz'), axis=1)].target
-        
+            bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1') and row.target.endswith('.bam'), axis=1)].target
+            bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz') and row.target.endswith('.bam'), axis=1)].target
+            print (align_files_df) 
             sort_tasks = bam_files_to_sort.apply(samtools_sort_task)
             tasks.extend(sort_tasks)
 
             hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
-        
+            print (hits_files)        
             express_tasks = list(hits_files.apply(express_task, args=(assembly,)))
             tasks.extend(express_tasks)
 
