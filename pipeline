@@ -126,7 +126,8 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
 
             def agg(fp_dict, tpm_fp, eff_fp, tot_fp):
                 readers = [csv.DictReader(fp, delimiter='\t') for fp in fp_dict.values()]
-                names = [fn + sep for fn, sep, _ in map(lambda fn: fn.partition('.fq.gz', )fp_dict.keys())]
+                names = [fn + sep for fn, sep, _ in map(lambda fn: fn.partition('.fq.gz'), fp_dict.keys())]
+                print(names)
 
                 tpm_writer = csv.DictWriter(tpm_fp, ['target_id'] + names, delimiter='\t')
                 tpm_writer.writeheader()
