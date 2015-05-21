@@ -19,6 +19,7 @@ import screed
 
 from peasoup.plot import FigManager
 from peasoup.plot import plot_dendro
+import peasoup
 
 import pandas as pd
 from pandas import Categorical
