@@ -223,17 +223,17 @@ def main():
         gunzip_df = resources_df[(resources_df.access == 'remote_query') |
                                  (resources_df.access == 'remote_file')]
         tasks.extend([dict_to_task(tsk) for tsk in 
-                      GunzipTask([(row.filename+'.gz', row.filename+'.tmp') for
+                      GunzipTask([(row.filename+'.gz', row.filename) for
                                    _, row in gunzip_df.iterrows()]).tasks()])
 
-        tasks.extend([dict_to_task(tsk) for tsk in 
-                      TruncateFastaNameTask([(row.filename+'.tmp', row.filename) for
-                                            _, row in gunzip_df.iterrows()]).tasks()])
+        tasks.extend(list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
+                        lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)), 
+                        axis=1, reduce=False)))
 
         tasks.extend(list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
                         lambda row: dict_to_task(task_funcs.blast_format_task(
                             row.filename, row.filename+'.db', row.db_type)),
-                        axis=1, reduce=False)))
+                            axis=1, reduce=False)))
         
         blast_iters = []
         for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
