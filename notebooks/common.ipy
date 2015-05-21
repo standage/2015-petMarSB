@@ -29,7 +29,7 @@ def wdir(fn=''):
     return os.path.join(os.path.join('../', config['pipeline']['work_dir']), fn)
 
 def len_func(fn):
-    fn = common.wdir(fn)
+    fn = wdir(fn)
     N = !grep -c ">" {fn}
     return int(N[0])
 
@@ -39,9 +39,7 @@ resources_df['size'] = resources_df[resources_df.meta_type != 'sample'].filename
 outfmt6 = ['sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', \
            'qend', 'sstart', 'send', 'evalue', 'bitscore']
 
-sample_df['tissue_c'] = Categorical(list(sample_df.tissue)).codes
-tissue_palette = sns.color_palette('Set3', n_colors=len(sample_df.groupby('tissue_c').count()))
-sample_df['color'] = sample_df.tissue_c.apply(lambda x: tissue_palette[x])sample_df['tissue_c'] = Categorical(list(sample_df.tissue)).codes
+sample_df['tissue_c'] = list(Categorical(list(sample_df.tissue)).codes)
 tissue_palette = sns.color_palette('Set3', n_colors=len(sample_df.groupby('tissue_c').count()))
 sample_df['color'] = sample_df.tissue_c.apply(lambda x: tissue_palette[x])
 
@@ -98,5 +96,3 @@ def transcript_write_func(X, gene_map, db, outfp):
         h_line = '{0} {1} {2} {3}'.format(tr_name, gene_tag, gene_alias, gene_name)
         tr = db[tr_name].sequence
         outfp.write('>{}\n{}\n'.format(h_line, tr))
-
-
