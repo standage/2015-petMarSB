@@ -24,6 +24,62 @@ Define relevant task functions for pipeline
 '''
 
 @task_funcs.create_task_object
+def diginorm_task(input_files, ksize, htsize, cutoff,
+                  n_tables=4, ht_outfn=None, label=None):
+
+    if not label:
+        label = 'normalize_by_median_'
+        label += '_'.join(input_files[:5])
+        if len(input_files) > 5:
+            label += '_and_' + len(input_files) - 5 + '_more'
+
+    if len(input_files) == 1:
+        report_fn = input_files[0] + '.keep.report.txt'
+    else:
+        report_fn = label + '.report.txt'
+
+    inputs = ' '.join(input_files)
+    ht_out_str = ''
+    if ht_outfn is not None:
+        ht_out_str = '-s ' + ht_outfn
+    cmd = 'normalize-by-median.py -k {ksize} -x {htsize} -N {n_tables} '\
+          '-C {cutoff} -R {report_fn} {ht_out_str} {inputs}'.format(**locals())
+
+    targets = [fn + '.keep' for fn in input_files]
+    targets.append(report_fn)
+    if ht_out_str:
+        targets.append(ht_outfn)
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [cmd],
+            'file_dep': input_files,
+            'targets': targets,
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
+def filter_abund_task(input_files, ct_file, minabund, coverage, label=None):
+
+    if not label:
+        label = 'filter_abund_'
+        label += '_'.join(input_files[:5])
+        if len(input_files) > 5:
+            label += '_and_' + len(input_files) - 5 + '_more'
+
+    inputs = ' '.join(input_files)
+    cmd = 'filter-abund.py -C {minabund} -V -Z {coverage} '\
+          '{ct_file} {inputs}'.format(**locals())
+
+    targets = [fn + '.abundfilt' for fn in input_files]
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [cmd],
+            'file_dep': input_files + [ct_file],
+            'targets': targets,
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
 def curl_task(row):
     cmd = 'curl -o {target_fn} {url}'.format(target_fn=row.filename+'.gz', url=row.url)
     tsk = task_funcs.general_cmdline_task([], [row.filename+'.gz'], cmd)
@@ -33,7 +89,7 @@ def curl_task(row):
 
 @task_funcs.create_task_object
 def create_folder_task(folder, label=''):
-    
+
     if not label:
         label = 'create_folder_{folder}'.format(**locals())
 
@@ -75,7 +131,7 @@ def blast_task(row, config, assembly):
 def link_files_task(src):
     cmd = 'ln -fs {src}'.format(src=src)
     return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
-    
+
 @task_funcs.create_task_object
 def bowtie2_build_task(row):
     return task_funcs.bowtie2_build_task(row.filename, row.filename.split('.fasta')[0])
@@ -89,7 +145,7 @@ def bowtie2_align_task(row, idx_fn):
     target = '{sample}.x.{idx}'.format(sample=row.filename, idx=idx_fn)
     encoding = '--' + row.phred
     if row.paired == False:
-        return task_funcs.bowtie2_align_task(idx_fn, target, singleton_fn=row.filename, 
+        return task_funcs.bowtie2_align_task(idx_fn, target, singleton_fn=row.filename,
                                              num_threads=BOWTIE_THREADS, encoding=encoding)
     else:
         return task_funcs.bowtie2_align_task(idx_fn, target, left_fn=row.filename+'.1',
@@ -107,7 +163,7 @@ def samtools_sort_task(hits_fn):
 
 @task_funcs.create_task_object
 def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_target_fn, label=''):
-    
+
     import csv
 
     def recursive_open(file_list, fp_dict, call, *args, **kwargs):
@@ -150,7 +206,7 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
                     data = {fn:d['tot_counts'] for fn, d in zip(names, lines)}
                     data['target_id'] = lines[0]['target_id']
                     tot_writer.writerow(data)
-            
+
             fpd = {}
             recursive_open(results_files, fpd, agg, tpm_fp, eff_fp, tot_fp)
 
@@ -163,7 +219,7 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
             'targets': [eff_target_fn, tpm_target_fn, tot_target_fn],
             'clean': [clean_targets],
             'file_dep': results_files}
-        
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -185,14 +241,14 @@ def main():
 #
 # 2015 Petromyzon marinus (sea lamprey) de novo RNA-seq Pipeline
 #
-# * Authors: 
+# * Authors:
 #   {authors}
 #
-# * About: 
+# * About:
 #   {desc}
 #
 ####################################################################
-'''.format(authors=', '.join(config['meta']['authors']), 
+'''.format(authors=', '.join(config['meta']['authors']),
            desc=config['meta']['description'])
     print(desc, file=sys.stderr)
 
@@ -200,7 +256,6 @@ def main():
     local_dir = os.path.abspath(args.local_file_dir)
 
     resources_df = pd.DataFrame(resources).transpose()
-    #resources_df['filename'] = resources_df.filename.apply(lambda f: os.path.join(data_dir, f))
     sample_df = resources_df[resources_df.meta_type == 'sample']
 
     old_dir = os.getcwd()
@@ -211,54 +266,101 @@ def main():
         print('** Current Working Directory: {w}'.format(w=os.getcwd()), file=sys.stderr)
 
         tasks = []
-        
-        tasks.extend(list(resources_df[resources_df.access == 'remote_file'].apply(
-                     lambda row: curl_task(row), axis=1, reduce=False)))
 
-        tasks.extend(list(resources_df[(resources_df.access == 'remote_query') & \
-                                       (resources_df.q_type == 'uniprot')].apply(
-                            lambda row: dict_to_task(task_funcs.uniprot_query_task(row.terms, row.filename+'.gz')), 
-                            axis=1, reduce=False)))
-
-        gunzip_df = resources_df[(resources_df.access == 'remote_query') |
-                                 (resources_df.access == 'remote_file')]
-        tasks.extend([dict_to_task(tsk) for tsk in 
-                      GunzipTask([(row.filename+'.gz', row.filename) for
-                                   _, row in gunzip_df.iterrows()]).tasks()])
-
-        tasks.extend(list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
-                        lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)), 
-                        axis=1, reduce=False)))
-
-        tasks.extend(list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
-                        lambda row: dict_to_task(task_funcs.blast_format_task(
-                            row.filename, row.filename+'.db', row.db_type)),
-                            axis=1, reduce=False)))
-        
-        blast_iters = []
-        for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
-
-            blast_iters.extend([blast_task(row, config, fn) \
-                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') & 
-                                                   (resources_df.meta_type != 'assembly')].iterrows()])
-
-        blast_iters.extend([blast_task(row, config, resources_df.ix['petMar2_cdna'].filename) \
-                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') & 
-                                                   (resources_df.filename != 'petMar2.cdna.fa')].iterrows()])
-
-        for tskiter in blast_iters:
-            tasks.extend([dict_to_task(tsk) for tsk in tskiter])
-        
-        bt_build_tasks = resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False)
-        index_basenames = resources_df[resources_df.meta_type == 'assembly'].filename.apply(lambda fn: fn.rstrip('.fasta'))
-        tasks.extend(list(bt_build_tasks))
+        '''
+        Sample preprocessing
+        '''
 
         link_tasks = sample_df.filename.apply(lambda fn: os.path.join(local_dir, fn)).apply(link_files_task)
         tasks.extend(list(link_tasks))
 
+        # Run diginorm in parallel on all samples
+        ksize = config['pipeline']['khmer']['ksize']
+        htsize = config['pipeline']['khmer']['parallel']['table_size']
+        ntables = config['pipeline']['khmer']['parallel']['n_tables']
+        coverage = config['pipeline']['khmer']['parallel']['coverage']
+        dg_tasks = sample_df.apply(
+                            lambda row: diginorm_task([row.filename], ksize,
+                                htsize, coverage, ntables), axis=1, reduce=False)
+        tasks.extend(list(dg_tasks))
+        dg_outputs = sample_df.filename.apply(lambda fn: fn+'.keep')
+
+        htsize = config['pipeline']['khmer']['pooled']['table_size']
+        ntables = config['pipeline']['khmer']['pooled']['n_tables']
+        coverage = config['pipeline']['khmer']['pooled']['coverage']
+        ht_fn = config['pipeline']['prefix'] + '.pooled.ct'
+        dg_task = diginorm_task(list(dg_outputs), ksize, htsize, coverage,
+                                n_tables=ntables, ht_outfn=ht_fn)
+        tasks.append(dg_task)
+        dg_outputs = dg_outputs.apply(lambda fn: fn+'.keep')
+
+        minabund = config['pipeline']['khmer']['parallel']['min_abund']
+        abf_task = filter_abund_task(list(dg_outputs), ht_fn, minabund, coverage)
+        tasks.append(abf_task)
+
+
+        '''
+        Database prep, homology search
+        '''
+        # Use curl to get remote flat files
+        remote_files = resources_df[resources_df.access == 'remote_file']
+        curl_tasks = remote_files.apply(lambda row: curl_task(row),
+                                        axis=1, reduce=False)
+        tasks.extend(list(curl_tasks))
+
+        # Programmatically query uniprot
+        uniprot_queries = resources_df[(resources_df.access == 'remote_query') & \
+                                       (resources_df.q_type == 'uniprot')]
+        uniprot_tasks = uniprot_queries.apply(lambda row: dict_to_task(
+                                task_funcs.uniprot_query_task(
+                                                        row.terms,
+                                                        row.filename+'.gz')
+                                ), axis=1, reduce=False)
+        tasks.extend(list(uniprot_tasks))
+
+        # unpack gzip'd remote flat files and queries
+        gunzip_df = resources_df[(resources_df.access == 'remote_query') |
+                                 (resources_df.access == 'remote_file')]
+        tasks.extend([dict_to_task(tsk) for tsk in
+                      GunzipTask([(row.filename+'.gz', row.filename) for
+                                   _, row in gunzip_df.iterrows()]).tasks()])
+
+        # Truncate the long fasta names so blast doesn't choke
+        tasks.extend(list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
+                        lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)),
+                        axis=1, reduce=False)))
+
+        # Generate blast indices
+        tasks.extend(list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
+                        lambda row: dict_to_task(task_funcs.blast_format_task(
+                            row.filename, row.filename+'.db', row.db_type)),
+                            axis=1, reduce=False)))
+
+        # Run blast
+        blast_iters = []
+        for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
+
+            blast_iters.extend([blast_task(row, config, fn) \
+                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
+                                                   (resources_df.meta_type != 'assembly')].iterrows()])
+
+        blast_iters.extend([blast_task(row, config, resources_df.ix['petMar2_cdna'].filename) \
+                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
+                                                   (resources_df.filename != 'petMar2.cdna.fa')].iterrows()])
+
+        for tskiter in blast_iters:
+            tasks.extend([dict_to_task(tsk) for tsk in tskiter])
+
+        '''
+        Alignment / abundance estimation stuff
+        '''
+        bt_build_tasks = resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False)
+        index_basenames = resources_df[resources_df.meta_type == 'assembly'].filename.apply(lambda fn: fn.rstrip('.fasta'))
+        tasks.extend(list(bt_build_tasks))
+
         split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
         tasks.extend(list(split_tasks))
-        
+
         for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
             index_fn = assembly.rstrip('.fasta')
             align_tasks = list(sample_df.apply(bowtie2_align_task, args=(index_fn,), axis=1, reduce=False))
@@ -281,14 +383,14 @@ def main():
                                                          '{pref}.eXpress.eff.tsv'.format(pref=index_fn),
                                                          '{pref}.eXpress.tot.tsv'.format(pref=index_fn))
             tasks.append(agg_task)
-        
+
         if args.print_tasks:
             for task in tasks:
                 print('-----\n', task)
                 pprint.pprint(task.__dict__)
 
         task_funcs.run_tasks(tasks, doit_args)
-    
+
     finally:
         os.chdir(old_dir)
 
