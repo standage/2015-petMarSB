@@ -1105,7 +1105,7 @@
         "db_type": "nucl",
         "filename": "lamp03.fasta",
         "meta_type": "assembly",
-        "url": "http://athyra.ged.msu.edu/~cswelcher/lamprey/lamp03.fasta.gz"
+        "url": "http://athyra.ged.msu.edu/~camille/lamprey/lamp03.fasta.gz"
     },
 
     "lamp10": {
@@ -1113,7 +1113,7 @@
         "db_type": "nucl",
         "filename": "lamp10.fasta",
         "meta_type": "assembly",
-        "url": "http://athyra.ged.msu.edu/~cswelcher/lamprey/lamp10.fasta.gz"
+        "url": "http://athyra.ged.msu.edu/~camille/lamprey/lamp10.fasta.gz"
     },
 
     "braFlo_pep": {
