@@ -29,17 +29,19 @@ def get_gtf_coords(row):
     Extract the coordinates and Interval information from a GTF series
     '''
     start = row.start
-    end = row.end + 1
+    end = row.end
     return start, end, row.contig_id, row.strand
 
 def get_blast_subject_coords(row):
     '''
     Extract the coordinates and Interval information for the subject in a BLAST hit
     '''
-    start = min(row.sstart, row.send)
-    end = max(row.sstart, row.send)
-    if start == end:
-        end += 1
+    if row.sstart < row.send:
+        start = row.sstart - 1
+        end = row.send
+    else:
+        start = row.send
+        end = row.sstart + 1
     strand = '+'
     if row.sstart > row.send:
         strand = '-'
@@ -49,10 +51,12 @@ def get_blast_query_coords(row):
     '''
     Extract the coordinates and Interval information for the query in a BLAST hit
     '''
-    start = min(row.qstart, row.qend)
-    end = max(row.qstart, row.qend)
-    if start == end:
-        end += 1
+    if row.qstart < row.qend:
+        start = row.qstart - 1
+        end = row.qend
+    else:
+        start = row.qend
+        end = row.qstart + 1
     strand = '+'
     if row.qstart > row.qend:
         strand = '-'
