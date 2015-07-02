@@ -28,9 +28,7 @@ def get_gtf_coords(row):
     '''
     Extract the coordinates and Interval information from a GTF series
     '''
-    start = row.start
-    end = row.end + 1
-    return start, end, row.contig_id, row.strand
+    return row.start, row.end, row.contig_id, row.strand
 
 def get_blast_subject_coords(row):
     '''
@@ -38,8 +36,6 @@ def get_blast_subject_coords(row):
     '''
     start = min(row.sstart, row.send)
     end = max(row.sstart, row.send)
-    if start == end:
-        end += 1
     strand = '+'
     if row.sstart > row.send:
         strand = '-'
@@ -51,8 +47,6 @@ def get_blast_query_coords(row):
     '''
     start = min(row.qstart, row.qend)
     end = max(row.qstart, row.qend)
-    if start == end:
-        end += 1
     strand = '+'
     if row.qstart > row.qend:
         strand = '-'
@@ -171,7 +165,9 @@ def tree_intersect(tree_A, tree_B):
         iv = node.interval
         if type(tree_B) is IntervalTree:
             for ov in tree_B.find(node.interval.start, node.interval.end):
-                overlaps[(iv.idx, ov.idx)] = calc_bases_overlapped(iv, [ov])
+                ov_len = calc_bases_overlapped(iv, [ov])
+                assert ov_len <= (node.interval.end - node.interval.start)
+                overlaps[(iv.idx, ov.idx)] = ov_len
     tree_A.traverse(overlap_fn)
     return overlaps
 
@@ -192,3 +188,8 @@ def get_gtf_aln_overlap_df(tree_df, bar=None):
             bar.update()
 
     return pd.concat(data, axis=0)
+
+def check_ann_covered(ann_df, aln_tree_df, cutoff=0.90):
+
+    def overlap_fn(row):
+        overlaps = aln_tree_df.loc[row.
