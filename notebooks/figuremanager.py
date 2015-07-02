@@ -15,7 +15,6 @@ class FigManager(object):
         if not self.quiet and plt.gcf():
             print >>sys.stderr, 'leaving context of', repr(plt.gcf())
 
-        sns.set_style(sns_style)
         self.fig, self.ax = plt.subplots(nrows=nrows, ncols=ncols,
                                          figsize=figsize,
                                          tight_layout=tight_layout, **fig_kwds)
