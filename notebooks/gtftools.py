@@ -25,6 +25,8 @@ def read_gtf(filename):
                       pd.DataFrame(list(gtf_df.attributes)),
                       left_index=True, right_index=True)
     del gtf_df['attributes']
-
+    
+    # Switch from [start, end] to [start, end)
+    gtf_df.end = gtf_df.end + 1
 
     return gtf_df
