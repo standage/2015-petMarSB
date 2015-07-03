@@ -36,32 +36,14 @@ def get_blast_subject_coords(row):
     Extract the coordinates and Interval information for the subject in a BLAST hit
     '''
 
-    if row.sstart < row.send:
-        start = row.sstart - 1
-        end = row.send
-    else:
-        start = row.send
-        end = row.sstart + 1
-    strand = '+'
-    if row.sstart > row.send:
-        strand = '-'
-    return start, end, row.qseqid, strand
+    return row.sstart, row.send, row.qseqid, row.sstrand
 
 def get_blast_query_coords(row):
     '''
     Extract the coordinates and Interval information for the query in a BLAST hit
     '''
 
-    if row.qstart < row.qend:
-        start = row.qstart - 1
-        end = row.qend
-    else:
-        start = row.qend
-        end = row.qstart + 1
-    strand = '+'
-    if row.qstart > row.qend:
-        strand = '-'
-    return start, end, row.sseqid, strand
+    return row.qstart, row.qend, row.sseqid, row.qstrand
 
 def build_tree_from_group(group, ref_dataframe, coord_func, bar=None):
     '''
@@ -160,7 +142,7 @@ def get_gtf_aln_coverage(tree_df):
             data.append(d)
     return pd.concat(data, axis=0)
 
-def tree_intersect(tree_A, tree_B):
+def tree_intersect(tree_A, tree_B, cutoff=0.9):
     '''
     Find all overlaps of Intervals in A by B and return a `dict` of the results,
     where keys are (annotation_id, alignment_id) tuples (with the id being the
@@ -178,11 +160,12 @@ def tree_intersect(tree_A, tree_B):
             for ov in tree_B.find(node.interval.start, node.interval.end):
                 ov_len = calc_bases_overlapped(iv, [ov])
                 assert ov_len <= (node.interval.end - node.interval.start)
-                overlaps[(iv.idx, ov.idx)] = ov_len
+                if float(ov_len) / (iv.end - iv.start) >= cutoff:
+                    overlaps[(iv.idx, ov.idx)] = ov_len
     tree_A.traverse(overlap_fn)
     return overlaps
 
-def get_gtf_aln_overlap_df(tree_df, bar=None):
+def get_ann_aln_overlap_df(tree_df, cutoff=0.9, bar=None):
     '''
     Perform the tree intersect between all pairs of (annotation, alignment) IntervalTrees
     in the given DataFrame; return as a new, larger DataFrame
@@ -191,7 +174,7 @@ def get_gtf_aln_overlap_df(tree_df, bar=None):
     data = []
     for contig_id, ann_tree, aln_tree in tree_df.itertuples():
         if type(ann_tree) is IntervalTree:
-            d = tree_intersect(ann_tree, aln_tree)
+            d = tree_intersect(ann_tree, aln_tree, cutoff=cutoff)
             if d:
                 index = pd.MultiIndex.from_tuples(d.keys(), names=['ann_id', 'aln_id'])
                 data.append(pd.DataFrame({'overlap_len': d.values()}, index=index))
@@ -200,7 +183,58 @@ def get_gtf_aln_overlap_df(tree_df, bar=None):
 
     return pd.concat(data, axis=0)
 
-def check_ann_covered(ann_df, aln_tree_df, cutoff=0.90):
+def get_aln_ann_overlap_df(tree_df, cutoff=0.9, bar=None):
+    data = []
+    for contig_id, ann_tree, aln_tree in tree_df.itertuples():
+        if type(aln_tree) is IntervalTree:
+            d = tree_intersect(aln_tree, ann_tree, cutoff=cutoff)
+            if d:
+                index = pd.MultiIndex.from_tuples(d.keys(), names=['aln_id', 'ann_id'])
+                data.append(pd.DataFrame({'overlap_len': d.values()}, index=index))
+        if bar is not None:
+            bar.update()
+
+    return pd.concat(data, axis=0)
+
+def check_ann_covered_single(ann_df, aln_tree_df, cutoff=0.90):
 
     def overlap_fn(row):
-        overlaps = aln_tree_df.loc[row.
+        iv = Interval(row.start, row.end)
+        try:
+            overlaps = aln_tree_df.loc[row.contig_id].find(iv.start, iv.end)
+        except KeyError:
+            return False
+        for ov in overlaps:
+            covered = calc_bases_overlapped(iv, [ov])
+            if float(covered) / (row.end - row.start) > cutoff:
+                return True
+        return False
+
+    return ann_df.apply(overlap_fn, axis=1)
+
+
+def check_ann_covered(ann_df, aln_tree_df, cutoff=0.90):
+
+    def overlap_fn(group):
+        contig_id = group.contig_id.iloc[0]
+        try:
+            tree = aln_tree_df.loc[contig_id]
+        except KeyError:
+            return pd.Series([False] * len(group), index=group.index)
+
+        results = []
+        for key, row in group.iterrows():
+            result = False
+            iv = Interval(row.start, row.end)
+            overlaps = tree.find(iv.start, iv.end)
+            if overlaps:
+                covered = calc_bases_overlapped(iv, overlaps)
+                if float(covered) / (row.end - row.start) >= cutoff:
+                    result = True
+            results.append(result)
+        
+        return pd.Series(results, index=group.index)
+
+    result_df = ann_df.groupby('contig_id').apply(overlap_fn)
+    result_df.index = result_df.index.droplevel(0)
+    return result_df
