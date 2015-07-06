@@ -10,6 +10,7 @@ class DataFrameInterval(Interval):
         Interval.__init__(self, *args, **kwargs)
         self.idx = idx
         self.df = df
+        self.length = self.end - self.start
 
     @property
     def value(self):
@@ -101,46 +102,9 @@ def calc_bases_overlapped(iv, overlap_ivs):
             else:
                 covered = iv.end - overlap_iv.start
                 break
+    assert covered <= len(iv)
     return covered
 
-def coverage_intersect(tree_A, tree_B):
-    '''
-    Perform a true intersection A^B: for each interval in A, find its length covered by intervals in B.
-    '''
-
-    if type(tree_A) is not IntervalTree:
-        raise TypeError('tree_A must be a valid IntervalTree')
-
-    overlaps = []
-    def overlap_fn(node):
-        iv = node.interval
-        if type(tree_B) is IntervalTree:
-            overlaps.append( (iv, tree_B.find(node.interval.start, node.interval.end)) )
-        else:
-            overlaps.append( (iv, []) )
-
-    covered_data = {}
-    tree_A.traverse(overlap_fn)
-    for iv, overlap_list in overlaps:
-        covered = 0
-        if overlap_list:
-            covered = calc_bases_overlapped(iv, overlap_list)
-        assert covered <= len(iv)
-        covered_data[iv.idx] = pd.Series({'covered': covered, 'length': len(iv)})
-    return pd.DataFrame(covered_data).T
-
-def get_gtf_aln_coverage(tree_df):
-    '''
-    Get the coverage intersect all pairs of (annotation, alignment) IntervalTrees
-    in the given DataFrame; return as a new, larger DataFrame
-    '''
-
-    data = []
-    for contig_id, ann_tree, aln_tree in tree_df.itertuples():
-        if type(ann_tree) is IntervalTree:
-            d = coverage_intersect(ann_tree, aln_tree)
-            data.append(d)
-    return pd.concat(data, axis=0)
 
 def tree_intersect(tree_A, tree_B, cutoff=0.9):
     '''
@@ -152,47 +116,97 @@ def tree_intersect(tree_A, tree_B, cutoff=0.9):
 
     if type(tree_A) is not IntervalTree:
         raise TypeError('tree_A must be a valid IntervalTree')
+    if type(tree_B) is not IntervalTree:
+        return {}
 
     overlaps = {}
     def overlap_fn(node):
         iv = node.interval
-        if type(tree_B) is IntervalTree:
-            for ov in tree_B.find(node.interval.start, node.interval.end):
-                ov_len = calc_bases_overlapped(iv, [ov])
-                assert ov_len <= (node.interval.end - node.interval.start)
-                if float(ov_len) / (iv.end - iv.start) >= cutoff:
-                    overlaps[(iv.idx, ov.idx)] = ov_len
+        for ov in tree_B.find(iv.start, iv.end):
+            ov_len = calc_bases_overlapped(iv, [ov])
+            assert ov_len <= (iv.end - iv.start)
+            if (float(ov_len) / len(iv)) >= cutoff:
+                overlaps[(iv.idx, ov.idx)] = ov_len
     tree_A.traverse(overlap_fn)
     return overlaps
 
-def get_ann_aln_overlap_df(tree_df, cutoff=0.9, bar=None):
+
+def tree_coverage_intersect(tree_A, tree_B, cutoff=0.9):
+    '''
+    Like `tree_intersect`, but merges overlapping interavals in `tree_B` to
+    calculate the overlap length.    
+    '''
+
+    if type(tree_A) is not IntervalTree:
+        raise TypeError('tree_A must be a valid IntervalTree')
+    if type(tree_B) is not IntervalTree:
+        return {}
+
+    overlaps = {}
+    def overlap_fn(node):
+        iv = node.interval
+        ov_list = tree_B.find(iv.start, iv.end)
+        if ov_list:
+            ov_len = calc_bases_overlapped(iv, ov_list)
+            assert ov_len <= (iv.end - iv.start)
+            if (float(ov_len) / len(iv)) >= cutoff:
+                overlaps[iv.idx] = ov_len
+    tree_A.traverse(overlap_fn)
+    return overlaps
+
+
+def get_ann_aln_overlap_df(tree_df, cutoff=0.9, merge=False, bar=None):
     '''
     Perform the tree intersect between all pairs of (annotation, alignment) IntervalTrees
-    in the given DataFrame; return as a new, larger DataFrame
+    in the given DataFrame
     '''
 
     data = []
-    for contig_id, ann_tree, aln_tree in tree_df.itertuples():
-        if type(ann_tree) is IntervalTree:
-            d = tree_intersect(ann_tree, aln_tree, cutoff=cutoff)
-            if d:
-                index = pd.MultiIndex.from_tuples(d.keys(), names=['ann_id', 'aln_id'])
-                data.append(pd.DataFrame({'overlap_len': d.values()}, index=index))
-        if bar is not None:
-            bar.update()
+    if merge:
+        for contig_id, ann_tree, aln_tree in tree_df.itertuples():
+            if type(ann_tree) is IntervalTree: # as opposed to NaN
+                d = tree_coverage_intersect(ann_tree, aln_tree, cutoff=cutoff)
+                if d:
+                    data.append(pd.DataFrame({'overlap_len': d.values()}, index=d.keys()))
+            if bar:
+                bar.update()
+    else:
+        for contig_id, ann_tree, aln_tree in tree_df.itertuples():
+            if type(ann_tree) is IntervalTree:
+                d = tree_intersect(ann_tree, aln_tree, cutoff=cutoff)
+                if d:
+                    index = pd.MultiIndex.from_tuples(d.keys(), names=['ann_id', 'aln_id'])
+                    data.append(pd.DataFrame({'overlap_len': d.values()}, index=index))
+            if bar is not None:
+                bar.update()
 
     return pd.concat(data, axis=0)
 
-def get_aln_ann_overlap_df(tree_df, cutoff=0.9, bar=None):
+
+def get_aln_ann_overlap_df(tree_df, cutoff=0.9, merge=False, bar=None):
+    '''
+    Perform the tree intersect between all pairs of (alignment, annotation) IntervalTrees
+    in the given DataFrame
+    '''
+
     data = []
-    for contig_id, ann_tree, aln_tree in tree_df.itertuples():
-        if type(aln_tree) is IntervalTree:
-            d = tree_intersect(aln_tree, ann_tree, cutoff=cutoff)
-            if d:
-                index = pd.MultiIndex.from_tuples(d.keys(), names=['aln_id', 'ann_id'])
-                data.append(pd.DataFrame({'overlap_len': d.values()}, index=index))
-        if bar is not None:
-            bar.update()
+    if merge:
+        for contig_id, ann_tree, aln_tree in tree_df.itertuples():
+            if type(ann_tree) is IntervalTree: # as opposed to NaN
+                d = tree_coverage_intersect(aln_tree, ann_tree, cutoff=cutoff)
+                if d:
+                    data.append(pd.DataFrame({'overlap_len': d.values()}, index=d.keys()))
+            if bar:
+                bar.update()
+    else:
+        for contig_id, ann_tree, aln_tree in tree_df.itertuples():
+            if type(ann_tree) is IntervalTree:
+                d = tree_intersect(aln_tree, ann_tree, cutoff=cutoff)
+                if d:
+                    index = pd.MultiIndex.from_tuples(d.keys(), names=['aln_id', 'ann_id'])
+                    data.append(pd.DataFrame({'overlap_len': d.values()}, index=index))
+            if bar is not None:
+                bar.update()
 
     return pd.concat(data, axis=0)
 
@@ -206,7 +220,7 @@ def check_ann_covered_single(ann_df, aln_tree_df, cutoff=0.90):
             return False
         for ov in overlaps:
             covered = calc_bases_overlapped(iv, [ov])
-            if float(covered) / (row.end - row.start) > cutoff:
+            if float(covered) / (row.end - row.start) >= cutoff:
                 return True
         return False
 
