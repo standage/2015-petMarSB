@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from bx.intervals.intersection import Interval, IntervalTree
+from joshua.intervaltree import Interval, IntervalTree
 import pandas as pd
 import pyprind
 
@@ -10,14 +10,10 @@ class DataFrameInterval(Interval):
         Interval.__init__(self, *args, **kwargs)
         self.idx = idx
         self.df = df
-        self.length = self.end - self.start
 
     @property
     def value(self):
         return self.df.loc[self.idx]
-
-    def __len__(self):
-        return self.end - self.start
 
     def __str__(self):
         return 'DataFrameInterval({s}, {e}, idx={idx}, '\
@@ -115,7 +111,7 @@ def tree_intersect(tree_A, tree_B, cutoff=0.9):
     '''
 
     if type(tree_A) is not IntervalTree:
-        raise TypeError('tree_A must be a valid IntervalTree')
+        raise TypeError('tree_A must be a valid IntervalTree (got {t})'.format(t=type(tree_A)))
     if type(tree_B) is not IntervalTree:
         return {}
 
@@ -138,7 +134,7 @@ def tree_coverage_intersect(tree_A, tree_B, cutoff=0.9):
     '''
 
     if type(tree_A) is not IntervalTree:
-        raise TypeError('tree_A must be a valid IntervalTree')
+        raise TypeError('tree_A must be a valid IntervalTree (got {t})'.format(t=type(tree_A)))
     if type(tree_B) is not IntervalTree:
         return {}
 
@@ -192,7 +188,7 @@ def get_aln_ann_overlap_df(tree_df, cutoff=0.9, merge=False, bar=None):
     data = []
     if merge:
         for contig_id, ann_tree, aln_tree in tree_df.itertuples():
-            if type(ann_tree) is IntervalTree: # as opposed to NaN
+            if type(aln_tree) is IntervalTree: # as opposed to NaN
                 d = tree_coverage_intersect(aln_tree, ann_tree, cutoff=cutoff)
                 if d:
                     data.append(pd.DataFrame({'overlap_len': d.values()}, index=d.keys()))
@@ -200,7 +196,7 @@ def get_aln_ann_overlap_df(tree_df, cutoff=0.9, merge=False, bar=None):
                 bar.update()
     else:
         for contig_id, ann_tree, aln_tree in tree_df.itertuples():
-            if type(ann_tree) is IntervalTree:
+            if type(aln_tree) is IntervalTree:
                 d = tree_intersect(aln_tree, ann_tree, cutoff=cutoff)
                 if d:
                     index = pd.MultiIndex.from_tuples(d.keys(), names=['aln_id', 'ann_id'])
