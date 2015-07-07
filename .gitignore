@@ -50,6 +50,8 @@
 *.blg
 
 .doit.db
+.doit.db.*
+_work/
 *.ipynb_checkpoints
 *.swp
 *.pyc
