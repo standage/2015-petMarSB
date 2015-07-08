@@ -115,7 +115,7 @@ def calc_bases_overlapped(iv, overlap_ivs):
             else:
                 covered = iv.end - overlap_iv.start
                 break
-    assert covered <= len(iv)
+    #assert covered <= len(iv)
     return covered
 
 
@@ -173,7 +173,7 @@ def tree_coverage_intersect(tree_A, tree_B, cutoff=0.9):
             ov_list = tree_B.find(iv.start, iv.end)
             if ov_list:
                 ov_len = calc_bases_overlapped(iv, ov_list)
-                assert ov_len <= (iv.end - iv.start)
+                #assert ov_len <= (iv.end - iv.start)
                 if (float(ov_len) / len(iv)) >= cutoff:
                     overlaps.append((iv.idx, ov_len))
                 else:
@@ -276,3 +276,4 @@ def check_ann_covered(ann_df, aln_tree_df, cutoff=0.90):
     result_df = ann_df.groupby('contig_id').apply(overlap_fn)
     result_df.index = result_df.index.droplevel(0)
     return result_df
+
