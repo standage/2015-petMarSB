@@ -8,7 +8,21 @@ We give particular attention to alignments which entirely contain annotated regi
 Results
 =======
 
-Using our 90% overlap / 98% identity heuristic, We find [x]% of annotations to be covered by a transcript from lamp10, while [y]% of transcripts cover an annotation. Futher, []% of the genome is covered by annotations, while [%] is covered by alignments from lamp10; []% of transcripts have any alignment to the genome.
+Using our 90% overlap / 98% identity heuristic, we find 71.4% of annotations to be covered by a transcript from lamp10. When we break this down by feature, we find that the the proportion is brought down by features of types transcript and gene, both of which include introns.
+
+============   ===============
+Feature Type   Prop Overlapped
+============   ===============
+CDS            0.789203
+UTR            0.838308
+exon           0.780100
+gene           0.128880
+start_codon    0.857505
+stop_codon     0.903922
+transcript     0.120501
+============   ===============
+
+ while 73%[dubious] of transcripts cover an annotation. Futher, []% of the genome is covered by annotations, while [%] is covered by alignments from lamp10; []% of transcripts have any alignment to the genome.
 
 We also find that []% of transcript alignments entirely contain an annotation, increasing the annotation size by [blah]%. []% of extensions are supported by homology to a known protein. []% of transcipt alignments are entirely contained by an annotation.
 
