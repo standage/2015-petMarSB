@@ -101,6 +101,22 @@ def calc_bases_overlapped(iv, overlap_ivs):
     assert covered <= len(iv)
     return covered
 
+def calc_bases_overlapped_single(start_a, end_a, start_b, end_b):
+    '''
+    Given two Intervals, calculate their overlap
+    '''
+
+    if start_b <= start_a:
+        if end_b <= end_a:
+            return end_b - start_a
+        else:
+            return end_a - start_a
+    else:
+        if end_b <= end_a:
+            return end_b - start_b
+        else:
+            return end_a - start_b
+
 
 def tree_intersect(tree_A, tree_B, cutoff=0.9):
     '''
