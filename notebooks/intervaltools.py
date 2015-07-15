@@ -74,7 +74,6 @@ def build_forest_from_groups(grouped_df, reference_df, coord_func, bar=None):
 
     return forest
 
-
 def tree_intersect(tree_A, tree_B, cutoff=0.9):
     '''
     Find all overlaps of Intervals in A by B and return a `dict` of the results,
