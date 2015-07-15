@@ -74,51 +74,6 @@ def build_forest_from_groups(grouped_df, reference_df, coord_func, bar=None):
 
     return forest
 
-def merge_overlapping(iv_list):
-    '''
-    Merge all overlapping Intervals from the given list, and return a new list
-    with the collapsed Intervals
-    '''
-    if len(iv_list) == 1:
-        return iv_list
-
-    iv_list = sorted(iv_list, key=lambda iv: iv.start)
-    merge_stack = [iv_list[0]]
-    for iv in iv_list[1:]:
-        top = merge_stack[-1]
-        if top.end < iv.start:
-            merge_stack.append(iv)
-        elif top.end < iv.end:
-            top.end = iv.end
-            merge_stack.pop()
-            merge_stack.append(top)
-    return merge_stack
-
-def calc_bases_overlapped(iv, overlap_ivs):
-    '''
-    Given a target Interval and a list of *overlapping* Intervals,
-    calculate how many bases in the target are overlapped
-    '''
-    merged = merge_overlapping(overlap_ivs)
-
-    covered = 0
-    for overlap_iv in merged:
-        if overlap_iv.start <= iv.start:
-            if overlap_iv.end <= iv.end:
-                covered += overlap_iv.end - iv.start
-            else:
-                covered = iv.end - iv.start
-                break
-        else:
-            if overlap_iv.end <= iv.end:
-                covered += overlap_iv.end - overlap_iv.start
-            else:
-                covered = iv.end - overlap_iv.start
-                break
-    #assert covered <= len(iv)
-    return covered
-
-
 def tree_intersect(tree_A, tree_B, cutoff=0.9):
     '''
     Find all overlaps of Intervals in A by B and return a `dict` of the results,
