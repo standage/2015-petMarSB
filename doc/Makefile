@@ -1,9 +1,12 @@
 BIBFILE=2015-petMarSB.bib
 
-all: 2015-petMarSB.draft.pdf
+all: 2015-petMarSB.draft.pdf 2015-petMarSB.draft.rst
 
 2015-petMarSB.draft.tex: 2015-petMarSB.draft.texw
 	Pweave -f tex 2015-petMarSB.draft.texw -s ipython
+
+2015-petMarSB.draft.rst: 2015-petMarSB.draft.tex
+	pandoc $< -o $@
 
 2015-petMarSB.draft.pdf: 2015-petMarSB.draft.tex
 	rm -rf tex_out
