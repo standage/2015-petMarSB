@@ -12,13 +12,19 @@ def read_gtf(filename):
             d[pair[0]] = pair[1].strip('"')
         return d
 
+    def strand_func(col):
+        if col =='+':
+            return 1
+        else:
+            return -1
+
     names=['contig_id', 'source', 'feature', 'start', 'end',
            'score', 'strand', 'frame', 'attributes']
 
     # Read everything into a DataFrame
     gtf_df = pd.read_table(filename, delimiter='\t', comment='#',
                            header=False, names=names,
-                           converters={'attributes': attr_col_func})
+                           converters={'attributes': attr_col_func, 'strand': strand_func})
     
     # Generate a new DataFrame from the attributes dicts, and merge it in
     gtf_df = pd.merge(gtf_df,
