@@ -45,8 +45,6 @@ which tend to contain large stretches of intronic sequence unlikely to
 be covered above our chosen cutoff by any transcript. For example, when
 we consider only exons, .
 
-[H]
-
 | lrr & lamp00 & lamp10
 | CDS & 0.919196 & 0.789203
 | UTR & 0.957400 & 0.838308
@@ -106,4 +104,3 @@ Trinity Assembly
 
 Post-processing
 ---------------
-
