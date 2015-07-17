@@ -38,11 +38,11 @@ Analyses
 Assembly
 --------
 
-We find 73.91% of annotations to be covered by a transcript from lamp10.
+<<<<<<< HEAD
+We find 71.48% of annotations to be covered by a transcript from lamp10.
 Breaking down this percentage by feature type reveals that the results
 are biased by the inclusion of gene and transcripts features, both of
 which tend to contain large stretches of intronic sequence unlikely to
-be covered above our chosen cutoff by any transcript. When we consider
 only exons, 80.65% are covered, exons being a basic feature of mRNAs.
 
 | lrr & lamp00 & lamp10
@@ -121,4 +121,3 @@ Trinity Assembly
 
 Post-processing
 ---------------
-
