@@ -72,8 +72,13 @@ Section should include information on sea lamprey sample prep where available, t
 
 %Discuss annotation: use of trinotate, blast databases, recipricol best-hits \citep{moreno-hagelsieb_choosing_2008}. 
 
-We find 71.48%
- of annotations to be covered by a transcript from lamp10. Breaking down this percentage by feature type reveals that the results are biases by the inclusion of gene and transcripts features, both of which tend to contain large stretches of intronic sequence unlikely to be covered above our chosen cutoff by any transcript. For example, when we consider only exons, .
+We find 73.91\%
+ of annotations to be covered by a transcript from lamp10. 
+Breaking down this percentage by feature type reveals that the results are biased by the inclusion of gene and transcripts features, 
+both of which tend to contain large stretches of intronic sequence unlikely to be covered above our chosen cutoff by any transcript. 
+When we consider only exons, 80.65\%
+ are covered, exons
+being a basic feature of mRNAs.
 
 \begin{table}[H]
 \caption {Proportion of Annotations Covered by lamp00 and lamp10}
@@ -83,13 +88,13 @@ We find 71.48%
 \toprule
 {} &    lamp00 &    lamp10 \\
 \midrule
-CDS         &  0.919196 &  0.789203 \\
-UTR         &  0.957400 &  0.838308 \\
-exon        &  0.896246 &  0.780100 \\
-gene        &  0.051323 &  0.128880 \\
+CDS         &  0.919196 &  0.814513 \\
+UTR         &  0.957400 &  0.862251 \\
+exon        &  0.896246 &  0.806504 \\
+gene        &  0.051476 &  0.147945 \\
 start\_codon &  0.960101 &  0.857505 \\
 stop\_codon  &  0.636520 &  0.903922 \\
-transcript  &  0.048511 &  0.120501 \\
+transcript  &  0.048511 &  0.138392 \\
 \bottomrule
 \end{tabular}
 
@@ -98,9 +103,39 @@ transcript  &  0.048511 &  0.120501 \\
 \end{center}
 \end{table}
 
-73\% of transcripts cover an annotation. Futher, \% of the genome is covered by annotations, while \% is covered by alignments from lamp10; \% of transcripts have any alignment to the genome.
+Conversely, 29.72\%
+ of transcripts are covered by a single feature, while 99.89\%
+ of 
+transcripts are covered in lamp00. We find the latter number encouraging; one would expect almost all transcripts in lamp00 to be covered by a single feature, as it was derived directly from the annotations,
+while previous evidence suggests that lamp10 is a superset of lamp00, thus explaining the disparity. Examining the extend to which our overlaps are a superset, we can break down transcript genome homologies by
+whether each transcript has only a homology, or both a homology and an annotation overlap, as follows.
 
-We also find that \% of transcript alignments entirely contain an annotation, increasing the annotation size by \%. \% of extensions are supported by homology to a known protein. \% of transcipt alignments are entirely contained by an annotation.
+\begin{table}[H]
+\caption {Proportion of Homologies and Annotation overlaps by Transcript in lamp00 and lamp10}
+\begin{center}
+
+\begin{tabular}{llrr}
+\toprule
+{} & assembly &     num &      prop \\
+\midrule
+presence    &          &         &           \\
++genome+ann &   lamp00 &   11476 &  0.998868 \\
++genome+ann &   lamp10 &  212607 &  0.297209 \\
++genome-ann &   lamp00 &       0 &  0.000000 \\
++genome-ann &   lamp10 &  311948 &  0.436080 \\
+\bottomrule
+\end{tabular}
+
+
+
+\end{center}
+\end{table}
+
+
+
+Futher, \% of the genome is covered by annotations, while \% is covered by alignments from lamp10; \% of transcripts have any alignment to the genome.
+
+We also find that \% of transcript alignments entirely contain an annotation, increasing the annotation size by \%. \% of extensions are supported by homology to a known protein. \% of transcript alignments are entirely contained by an annotation.
 
 
 \subsection*{Pooled Assembly Discovers Novel Transcripts}

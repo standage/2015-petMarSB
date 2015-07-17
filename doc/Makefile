@@ -14,7 +14,7 @@ all: 2015-petMarSB.draft.pdf 2015-petMarSB.draft.rst
 	cd tex_out; ln -s ../$<
 	cd tex_out; ln -s ../$(BIBFILE)
 	cd tex_out; pdflatex $<; bibtex $<; pdflatex $<; pdflatex $<
-	ln -s tex_out/$@
+	ln -fs tex_out/$@
 
 clean:
 	rm -rf tex_out 2015-petMarSB.draft.pdf 2015-petMarSB.draft.tex
