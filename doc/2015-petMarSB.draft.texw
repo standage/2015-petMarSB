@@ -77,7 +77,7 @@ Section should include information on sea lamprey sample prep where available, t
 
 %Discuss annotation: use of trinotate, blast databases, recipricol best-hits \citep{moreno-hagelsieb_choosing_2008}. 
 
-We find <% print '{:.2f}%'.format(data['lamp10_prop'] * 100.0) %> of annotations to be covered by a transcript from lamp10. Breaking down this percentage by feature type reveals that the results are biases by the inclusion of gene and transcripts features, both of which tend to contain large stretches of intronic sequence unlikely to be covered above our chosen cutoff by any transcript. For example, when we consider only exons, <% '{:.2f}%'.format(data['feature_props']['lamp10']['exon'] * 100.0) %>.
+We find <% print '{:.2f}\%'.format(data['lamp10_prop'] * 100.0) %> of annotations to be covered by a transcript from lamp10. Breaking down this percentage by feature type reveals that the results are biases by the inclusion of gene and transcripts features, both of which tend to contain large stretches of intronic sequence unlikely to be covered above our chosen cutoff by any transcript. For example, when we consider only exons, <% '{:.2f}\%'.format(data['feature_props']['lamp10']['exon'] * 100.0) %> of features are covered.
 
 \begin{table}[H]
 \caption {Proportion of Annotations Covered by lamp00 and lamp10}

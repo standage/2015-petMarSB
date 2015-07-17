@@ -38,7 +38,7 @@ Analyses
 Assembly
 --------
 
-We find 71.48 of annotations to be covered by a transcript from lamp10.
+We find 71.48% of annotations to be covered by a transcript from lamp10.
 Breaking down this percentage by feature type reveals that the results
 are biases by the inclusion of gene and transcripts features, both of
 which tend to contain large stretches of intronic sequence unlikely to
