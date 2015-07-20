@@ -38,18 +38,18 @@ Analyses
 Assembly
 --------
 
-We find 73.91% of annotations to be covered by a transcript from lamp10.
+We find 73.93% of annotations to be covered by a transcript from lamp10.
 Breaking down this percentage by feature type reveals that the results
 are biased by the inclusion of gene and transcripts features, both of
 which tend to contain large stretches of intronic sequence unlikely to
 be covered above our chosen cutoff by any transcript. When we consider
-only exons, 80.65% are covered, exons being a basic feature of mRNAs.
+only exons, 80.71% are covered, exons being a basic feature of mRNAs.
 
 | lrr & lamp00 & lamp10
 | CDS & 0.919196 & 0.814513
 | UTR & 0.957400 & 0.862251
-| exon & 0.896246 & 0.806504
-| gene & 0.051476 & 0.147945
+| exon & 0.896378 & 0.807120
+| gene & 0.051323 & 0.147640
 | start\_codon & 0.960101 & 0.857505
 | stop\_codon & 0.636520 & 0.903922
 | transcript & 0.048511 & 0.138392
@@ -67,9 +67,29 @@ homology and an annotation overlap, as follows.
 | llrr & assembly & num & prop
 | presence & & &
 | +genome+ann & lamp00 & 11476 & 0.998868
-| +genome+ann & lamp10 & 212607 & 0.297209
+| +genome+ann & lamp10 & 212606 & 0.297208
 | +genome-ann & lamp00 & 0 & 0.000000
-| +genome-ann & lamp10 & 311948 & 0.436080
+| +genome-ann & lamp10 & 311949 & 0.436082
+
+With so many transcripts having alignments to the genome but no
+corresponding annotation, it would be valuable to further understand
+which of these transcripts have protein homologies to other databases.
+In particular, lamprey’s uniquely valuable position in vertebrate
+evolution drives questions regarding loss and gain of genes within
+gnathostomes. To that end, we have subdivided these transcripts based on
+their homologies and orthologies with both zebrafish and amphioxus.
+
+| llrr braflo\_best\_hom & danrer\_best\_hom & no\_ann & has\_ann
+| True & True & 36605 & 10293
+| True & False & 847 & 873
+| False & True & 7196 & 4445
+| False & False & 167958 & 296338
+
+| llrr danrer\_ortho & braflo\_ortho & no\_ann & has\_ann
+| True & True & 3664 & 833
+| True & False & 2450 & 892
+| False & True & 1255 & 437
+| False & False & 205237 & 309787
 
 Futher, % of the genome is covered by annotations, while % is covered by
 alignments from lamp10; % of transcripts have any alignment to the

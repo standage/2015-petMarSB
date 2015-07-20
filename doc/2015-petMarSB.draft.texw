@@ -106,6 +106,27 @@ print pd.read_json(data['transcript_hom_ann_props'], orient='split').set_index('
 \end{center}
 \end{table}
 
+With so many transcripts having alignments to the genome but no corresponding annotation, it would be valuable to further understand which of these transcripts have protein
+homologies to other databases. In particular, lamprey's uniquely valuable position in vertebrate evolution drives questions regarding loss and gain of genes within	gnathostomes.
+To that end, we have subdivided these transcripts based on their homologies and orthologies with both zebrafish and amphioxus.
+
+\begin{table}[H]
+\caption {BLAST Best Hits for Transcripts Filtered by Database Presence}
+\begin{center}
+<< echo=False, results='tex'>>=
+print pd.read_json(data['lamp10_danrer_braflo_homs'], orient='split').to_latex(index=False)
+@
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\caption {BLAST Orthologies for Transcripts Filtered by Database Presence}
+\begin{center}
+<< echo=False, results='tex'>>=
+print pd.read_json(data['lamp10_danrer_braflo_ortho'], orient='split').to_latex(index=False)
+@
+\end{center}
+\end{table}
 
 
 Futher, \% of the genome is covered by annotations, while \% is covered by alignments from lamp10; \% of transcripts have any alignment to the genome.
