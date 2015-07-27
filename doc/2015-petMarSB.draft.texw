@@ -17,6 +17,8 @@ import json
 import pandas as pd
 with open('petmar-cross-validate.results.json') as fp:
     data = json.load(fp)
+
+%run -i ../notebooks/common.ipy 
 %>
 
 %\documentclass[twocolumn]{bmcart}% uncomment this for twocolumn layout and comment line below

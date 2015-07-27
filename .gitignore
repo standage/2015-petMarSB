@@ -55,3 +55,4 @@ _work/
 *.ipynb_checkpoints
 *.swp
 *.pyc
+doc/tex_out/
