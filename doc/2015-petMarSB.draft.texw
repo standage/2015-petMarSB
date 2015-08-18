@@ -112,6 +112,8 @@ With so many transcripts having alignments to the genome but no corresponding an
 homologies to other databases. In particular, lamprey's uniquely valuable position in vertebrate evolution drives questions regarding loss and gain of genes within	gnathostomes.
 To that end, we have subdivided these transcripts based on their homologies and orthologies with both zebrafish and amphioxus.
 
+% Add another column for not in genome at all
+
 \begin{table}[H]
 \caption {BLAST Best Hits for Transcripts Filtered by Database Presence}
 \begin{center}
