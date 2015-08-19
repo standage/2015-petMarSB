@@ -11,6 +11,7 @@ import pprint
 from itertools import izip
 
 import pandas as pd
+import jinja2
 
 from doit.tools import run_once, create_folder, title_with_actions
 from doit.task import clean_targets, dict_to_task
@@ -60,10 +61,9 @@ def trimmomatic_task(left_in, right_in, left_paired_out, left_unpaired_out,
 
     if not label:
         label = 'trimmomatic_' + left_in + '_' + right_in
-        print (label)
 
-    cmd = 'java -jar trimmomatic-0.33.jar PE -phred33 {left_in} {right_in} {left_paired_out} {left_unpaired_out} '\
-          '{right_paired_out} {right_unpaired_out} ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 -threads 1 '\
+    cmd = 'java -jar trimmomatic-0.33.jar PE -phred33 -threads 1 {left_in} {right_in} {left_paired_out} {left_unpaired_out} '\
+          '{right_paired_out} {right_unpaired_out} ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 '\
           'LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36'.format(**locals())
 
     return {'title': title_with_actions,
@@ -92,6 +92,28 @@ def interleave_task(left_in, right_in, out_fn, label=''):
 def link_files_task(src):
     cmd = 'ln -fs {src}'.format(src=src)
     return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
+
+@task_funcs.create_task_object
+def submit_velvet_task(file_list, velvet_cfg, label=''):
+
+    if not label:
+        label = 'velvet_' + '_'.join(file_list)
+
+    with open(velvet_cfg['template_file']) as fp:
+        template = jinja2.Template(fp.read())
+
+    def create_script(file_list, velvet_cfg, tpl):
+        with open(velvet_cfg['script_file'], 'wb') as fp:
+            pbs = tpl.render(file_list=file_list, **velvet_cfg)
+            fp.write(pbs)
+
+    cmd = 'qsub {fn}'.format(fn=velvet_cfg['script_file'])
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [(create_script, [file_list, velvet_cfg, template]), cmd],
+            'file_dep': file_list + [velvet_cfg['template_file']],
+            'targets': [velvet_cfg['directory'], velvet_cfg['script_file']]}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -161,6 +183,8 @@ def main():
                             n_tables=ntables, ht_outfn=ht_fn)
     tasks.append(dg_task)
     dg_files = [fn+'.keep' for fn in dg_files]
+
+    tasks.append(submit_velvet_task(dg_files, config['pipeline']['velvet']))
 
     if args.print_tasks:
         for task in tasks:

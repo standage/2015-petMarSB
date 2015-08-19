@@ -28,6 +28,24 @@
                 "n_tables": 4,
                 "coverage": 20 
             }
+        },
+
+        "velvet": {
+			"template_file": "velvet.tpl",
+			"script_file": "velvet.sh",
+            "time": "72:00:00",
+            "n_threads": 16,
+            "mem": "512gb",
+			"k_start": 23,
+            "k_end": 43,
+            "k_step": 4,
+            "min_contig_lgth": 300,
+            "cov_cutoff": 8,
+            "exp_cov": 18,
+            "ins_length": 300,
+            "max_gap_count": 7,
+            "min_pair_count": 7,
+            "directory": "2015-petMar-sperm-velvet"
         }
     }
 }
