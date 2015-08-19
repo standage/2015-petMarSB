@@ -1,0 +1,65 @@
+{
+    "2_TGACCA_L001_R1": {
+        "fragment": "left", 
+	    "sample": "2_TGACCA_L001",
+	    "meta_type": "sample", 
+	    "tissue": "sperm", 
+	    "filename": "2_TGACCA_L001_R1_001.fastq.gz"
+	}, 
+	
+	"2_TGACCA_L001_R2": {
+	    "fragment": "right", 
+		"sample": "2_TGACCA_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "2_TGACCA_L001_R2_001.fastq.gz"
+	}, 
+	
+	"4_GATCAG_L001_R2": {
+	    "fragment": "right", 
+		"sample": "4_GATCAG_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "4_GATCAG_L001_R2_001.fastq.gz"
+	}, 
+	
+	"4_GATCAG_L001_R1": {
+	    "fragment": "left", 
+		"sample": "4_GATCAG_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "4_GATCAG_L001_R1_001.fastq.gz"
+	}, 
+	
+	"2_ATCACG_L001_R2": {
+	    "fragment": "right", 
+		"sample": "2_ATCACG_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "2_ATCACG_L001_R2_001.fastq.gz"
+	}, 
+	
+	"2_ATCACG_L001_R1": {
+	    "fragment": "left", 
+		"sample": "2_ATCACG_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "2_ATCACG_L001_R1_001.fastq.gz"
+	}, 
+	
+	"4_CCGTCC_L001_R1": {
+	    "fragment": "left", 
+		"sample": "4_CCGTCC_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "4_CCGTCC_L001_R1_001.fastq.gz"
+	}, 
+	
+	"4_CCGTCC_L001_R2": {
+	    "fragment": "right", 
+		"sample": "4_CCGTCC_L001", 
+		"meta_type": "sample", 
+		"tissue": "sperm", 
+		"filename": "4_CCGTCC_L001_R2_001.fastq.gz"
+	}
+}

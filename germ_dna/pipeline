@@ -1,0 +1,172 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+from peasoup import task_funcs
+
+import argparse
+import os
+import sys
+import json
+import pprint
+from itertools import izip
+
+import pandas as pd
+
+from doit.tools import run_once, create_folder, title_with_actions
+from doit.task import clean_targets, dict_to_task
+
+
+'''
+Define relevant task functions for pipeline
+'''
+
+@task_funcs.create_task_object
+def diginorm_task(input_files, ksize, htsize, cutoff,
+                  n_tables=4, ht_outfn=None, label=None):
+
+    if not label:
+        label = 'normalize_by_median_'
+        label += '_'.join(input_files[:5])
+        if len(input_files) > 5:
+            label += '_and_' + str(len(input_files) - 5) + '_more'
+
+    if len(input_files) == 1:
+        report_fn = input_files[0] + '.keep.report.txt'
+    else:
+        report_fn = label + '.report.txt'
+
+    inputs = ' '.join(input_files)
+    ht_out_str = ''
+    if ht_outfn is not None:
+        ht_out_str = '-s ' + ht_outfn
+    cmd = 'normalize-by-median.py -k {ksize} -x {htsize} -N {n_tables} '\
+          '-C {cutoff} -R {report_fn} {ht_out_str} {inputs}'.format(**locals())
+
+    targets = [fn + '.keep' for fn in input_files]
+    targets.append(report_fn)
+    if ht_out_str:
+        targets.append(ht_outfn)
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [cmd],
+            'file_dep': input_files,
+            'targets': targets,
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
+def trimmomatic_task(left_in, right_in, left_paired_out, left_unpaired_out, 
+                     right_paired_out, right_unpaired_out, label=''):
+
+    if not label:
+        label = 'trimmomatic_' + left_in + '_' + right_in
+        print (label)
+
+    cmd = 'java -jar trimmomatic-0.33.jar PE -phred33 {left_in} {right_in} {left_paired_out} {left_unpaired_out}'\
+          '{right_paired_out} {right_unpaired_out} ILLUMINACLIP:TruSeq3-PE.fa:2:30:10'\
+          'LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [cmd],
+            'file_dep': [left_in, right_in],
+            'targets': [left_paired_out, left_unpaired_out, right_paired_out, right_unpaired_out],
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
+def interleave_task(left_in, right_in, out_fn, label=''):
+
+    if not label:
+        label = 'interleave_' + out_fn
+
+    cmd = 'interleave-reads.py {left_in} {right_in} -o {out_fn}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [cmd],
+            'file_dep': [left_in, right_in],
+            'targets': [out_fn],
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
+def link_files_task(src):
+    cmd = 'ln -fs {src}'.format(src=src)
+    return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--resources-metadata', default='resources-test.json')
+    parser.add_argument('--config-metadata', default='config-test.json')
+    parser.add_argument('--print-tasks', action='store_true', default=False)
+    parser.add_argument('--local-file-dir', default='_data')
+    args, doit_args = parser.parse_known_args()
+
+    with open(args.resources_metadata, 'r') as fp:
+        print('** Using data resources found in {c}'.format(c=args.resources_metadata), file=sys.stderr)
+        resources = json.load(fp)
+    with open(args.config_metadata, 'r') as fp:
+        print('** Using config found in {c}'.format(c=args.config_metadata), file=sys.stderr)
+        config = json.load(fp)
+
+    desc = '''
+####################################################################
+#
+# 2015 Petromyzon marinus (sea lamprey) sperm DNA assembly Pipeline
+#
+# * Authors:
+#   {authors}
+#
+# * About:
+#   {desc}
+#
+####################################################################
+'''.format(authors=', '.join(config['meta']['authors']),
+           desc=config['meta']['description'])
+    print(desc, file=sys.stderr)
+
+    local_dir = os.path.abspath(args.local_file_dir)
+    resources_df = pd.DataFrame(resources).transpose()
+
+    tasks = []
+
+    link_tasks = resources_df.filename.apply(lambda fn: os.path.join(local_dir, fn)).apply(link_files_task)
+    tasks.extend(list(link_tasks))
+
+    qc_files = []
+    for sample, sample_group in resources_df.groupby('sample'):
+        s = sample_group.pivot('sample', 'fragment', 'filename')
+        left = s.left[0]
+        right = s.right[0]
+        tasks.append(trimmomatic_task(left, right, left + '.paired', left + '.unpaired', 
+                                      right + '.paired', right + '.unpaired'))
+        tasks.append(interleave_task(left + '.paired', right + '.paired', sample + '.qc'))
+        qc_files.append(sample + '.qc')
+
+    # Run diginorm in parallel on all samples
+    dg_config = config['pipeline']['khmer']
+    ksize = dg_config['ksize']
+    htsize = dg_config['parallel']['table_size']
+    ntables = dg_config['parallel']['n_tables']
+    coverage = dg_config['parallel']['coverage']
+    dg_tasks = [diginorm_task([fn], ksize, htsize, coverage, ntables) for fn in qc_files]
+    tasks.extend(list(dg_tasks))
+
+    dg_files = [fn+'.keep' for fn in qc_files]
+
+    htsize = dg_config['pooled']['table_size']
+    ntables = dg_config['pooled']['n_tables']
+    coverage = dg_config['pooled']['coverage']
+    ht_fn = config['pipeline']['prefix'] + '.pooled.ct'
+    dg_task = diginorm_task(list(dg_files), ksize, htsize, coverage,
+                            n_tables=ntables, ht_outfn=ht_fn)
+    tasks.append(dg_task)
+    dg_files = [fn+'.keep' for fn in dg_files]
+
+    if args.print_tasks:
+        for task in tasks:
+            print('-----\n', task)
+            pprint.pprint(task.__dict__)
+
+    task_funcs.run_tasks(tasks, doit_args)
+
+main()
