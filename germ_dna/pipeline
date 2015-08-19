@@ -62,8 +62,8 @@ def trimmomatic_task(left_in, right_in, left_paired_out, left_unpaired_out,
         label = 'trimmomatic_' + left_in + '_' + right_in
         print (label)
 
-    cmd = 'java -jar trimmomatic-0.33.jar PE -phred33 {left_in} {right_in} {left_paired_out} {left_unpaired_out}'\
-          '{right_paired_out} {right_unpaired_out} ILLUMINACLIP:TruSeq3-PE.fa:2:30:10'\
+    cmd = 'java -jar trimmomatic-0.33.jar PE -phred33 {left_in} {right_in} {left_paired_out} {left_unpaired_out} '\
+          '-threads 1 {right_paired_out} {right_unpaired_out} ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 '\
           'LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36'.format(**locals())
 
     return {'title': title_with_actions,
