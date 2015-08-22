@@ -122,6 +122,31 @@ def submit_velvet_task(file_list, velvet_cfg, pbs_cfg, label=''):
             'targets': [velvet_cfg['directory'], script_fn]}
 
 @task_funcs.create_task_object
+def format_abyss_task(input_filename, output_filename, label=''):
+
+    import screed
+
+    if not label:
+        label = 'format_abyss_' + input_filename
+
+    def format_abyss():
+        with open(output_filename, 'wb') as fp:
+            for n, record in enumerate(screed.open(input_filename)):
+                if n % 2 == 0:
+                    record.name = record.name + '/1'
+                else:
+                    record.name = record.name + '/2'
+                fp.write('@{name}\n{seq}\n+\n{qual}\n'.format(name=record.name,
+                         seq=record.sequence, qual=record.quality))
+    
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [(format_abyss, [])],
+            'file_dep': [input_filename],
+            'targets': [output_filename],
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
 def submit_abyss_task(file_list, abyss_cfg, pbs_cfg, label=''):
 
     if not label:
@@ -219,7 +244,12 @@ def main():
 
     tasks.append(submit_velvet_task(dg_files, config['pipeline']['velvet'],
                  config['pipeline']['pbs-params'], label='velvet-' + config['pipeline']['prefix']))
-    tasks.append(submit_abyss_task(dg_files, config['pipeline']['abyss'],
+
+    abyss_files = [fn + '.abyss.fq' for fn in dg_files]
+    for infn, outfn in zip(dg_files, abyss_files):
+        tasks.append(format_abyss_task(infn, outfn))
+
+    tasks.append(submit_abyss_task(abyss_files, config['pipeline']['abyss'],
                  config['pipeline']['pbs-params'], label='abyss-' + config['pipeline']['prefix']))
 
     if args.print_tasks:
