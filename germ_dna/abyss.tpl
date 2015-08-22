@@ -11,4 +11,4 @@
 
 cd $PBS_O_WORKDIR
 
-abyss-pe name={{directory}} k={{k}} in='{{files}}' np={{n_threads}}
+abyss-pe name={{name}} k={{k}} in='{{files}}' np={{n_threads}}

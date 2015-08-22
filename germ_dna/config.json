@@ -60,7 +60,7 @@
             "n_threads": 32,
             "mem": "512gb",
             "k": 25,
-            "directory": "2015-petMar-sperm-abyss"
+            "name": "2015-petMar-sperm-abyss"
         }
     }
 }
