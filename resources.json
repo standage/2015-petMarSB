@@ -1146,12 +1146,19 @@
         "url": "ftp://ftp.ensembl.org/pub/release-75/fasta/petromyzon_marinus/dna/Petromyzon_marinus.Pmarinus_7.0.75.dna_sm.toplevel.fa.gz"
     },
     "petMar2_gtf": {
-	"access": "remote_file",
-	"db_type": "feature",
-	"filename": "petMar2.gtf",
-	"meta_type": "gtf_database",
-	"url": "http://ftp.ensembl.org/pub/release-75/gtf/petromyzon_marinus/Petromyzon_marinus.Pmarinus_7.0.75.gtf.gz"
+	    "access": "remote_file",
+	    "db_type": "feature",
+	    "filename": "petMar2.gtf",
+	    "meta_type": "gtf_database",
+	    "url": "http://ftp.ensembl.org/pub/release-75/gtf/petromyzon_marinus/Petromyzon_marinus.Pmarinus_7.0.75.gtf.gz"
     },
+	"petMar2_genes": {
+	    "access": "remote_file",
+		"db_type": "gene",
+		"filename": "petMar2.genes.txt",
+		"meta_type": "text_file",
+		"url": "ftp://hgdownload.cse.ucsc.edu/goldenPath/petMar2/database/geneName.txt.gz"
+	},
     "petMar2_cdna": {
         "access": "remote_file",
         "db_type": "nucl",

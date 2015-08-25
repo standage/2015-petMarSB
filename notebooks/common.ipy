@@ -57,8 +57,10 @@ warnings.filterwarnings("ignore",category=UserWarning)
 pd.set_option('display.max_rows', 200)
 
 def uniprot_str(uid):
-    tmp = uid.split('|')
-    return tmp[1]
+    if type(uid) in [str, unicode]:
+        tmp = uid.split('|')
+        return tmp[1]
+    return uid
 
 def filter_species(gene_set, mg, species='7757'):
     if mg is None:
