@@ -220,6 +220,11 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
             'clean': [clean_targets],
             'file_dep': results_files}
 
+@task_funcs.create_task_object
+def group_task(group_name, task_names):
+    return {'name': group_name,
+            'actions': None,
+            'task_dep': task_names}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -273,6 +278,7 @@ def main():
 
         link_tasks = sample_df.filename.apply(lambda fn: os.path.join(local_dir, fn)).apply(link_files_task)
         tasks.extend(list(link_tasks))
+        tasks.append(group_task('link-samples', [t.name for t in link_tasks]))
 
         # Run diginorm in parallel on all samples
         ksize = config['pipeline']['khmer']['ksize']
@@ -283,6 +289,7 @@ def main():
                             lambda row: diginorm_task([row.filename], ksize,
                                 htsize, coverage, ntables), axis=1, reduce=False)
         tasks.extend(list(dg_tasks))
+        tasks.append(group_task('normalize-pass-1', [t.name for t in dg_tasks]))
         dg_outputs = sample_df.filename.apply(lambda fn: fn+'.keep')
 
         htsize = config['pipeline']['khmer']['pooled']['table_size']
@@ -292,49 +299,57 @@ def main():
         dg_task = diginorm_task(list(dg_outputs), ksize, htsize, coverage,
                                 n_tables=ntables, ht_outfn=ht_fn)
         tasks.append(dg_task)
+        tasks.append(group_task('normalize-pass-2', [dg_task.name]))
         dg_outputs = dg_outputs.apply(lambda fn: fn+'.keep')
 
         minabund = config['pipeline']['khmer']['parallel']['min_abund']
         abf_task = filter_abund_task(list(dg_outputs), ht_fn, minabund, coverage)
+        tasks.append(group_task('filter-abund', [abf_task.name]))
         tasks.append(abf_task)
 
-
+        tasks.append(group_task('preprocess', ['link-samples', 'normalize-pass-1', 'normalize-pass-2', 'filter-abund']))
         '''
         Database prep, homology search
         '''
         # Use curl to get remote flat files
         remote_files = resources_df[resources_df.access == 'remote_file']
-        curl_tasks = remote_files.apply(lambda row: curl_task(row),
-                                        axis=1, reduce=False)
-        tasks.extend(list(curl_tasks))
+        curl_tasks = list(remote_files.apply(lambda row: curl_task(row),
+                                        axis=1, reduce=False))
+        tasks.extend(curl_tasks)
 
         # Programmatically query uniprot
         uniprot_queries = resources_df[(resources_df.access == 'remote_query') & \
                                        (resources_df.q_type == 'uniprot')]
-        uniprot_tasks = uniprot_queries.apply(lambda row: dict_to_task(
+        uniprot_tasks = list(uniprot_queries.apply(lambda row: dict_to_task(
                                 task_funcs.uniprot_query_task(
                                                         row.terms,
                                                         row.filename+'.gz')
-                                ), axis=1, reduce=False)
-        tasks.extend(list(uniprot_tasks))
+                                ), axis=1, reduce=False))
+        tasks.extend(uniprot_tasks)
 
         # unpack gzip'd remote flat files and queries
         gunzip_df = resources_df[(resources_df.access == 'remote_query') |
                                  (resources_df.access == 'remote_file')]
-        tasks.extend([dict_to_task(tsk) for tsk in
+        gunzip_tasks = [dict_to_task(tsk) for tsk in
                       GunzipTask([(row.filename+'.gz', row.filename) for
-                                   _, row in gunzip_df.iterrows()]).tasks()])
+                                   _, row in gunzip_df.iterrows()]).tasks()]
+        tasks.extend(gunzip_tasks)
 
         # Truncate the long fasta names so blast doesn't choke
-        tasks.extend(list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
+        truncate_tasks = list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
                         lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)),
-                        axis=1, reduce=False)))
+                        axis=1, reduce=False))
+        tasks.extend(truncate_tasks)
 
         # Generate blast indices
-        tasks.extend(list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
+        makeblastdb_tasks = list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
                         lambda row: dict_to_task(task_funcs.blast_format_task(
                             row.filename, row.filename+'.db', row.db_type)),
-                            axis=1, reduce=False)))
+                            axis=1, reduce=False))
+        tasks.extend(makeblastdb_tasks)
+
+        tasks.append(group_task('databases', [t.name for t in curl_tasks + uniprot_tasks + \
+                                              gunzip_tasks + truncate_tasks + makeblastdb_tasks]))
 
         # Run blast
         blast_iters = []
@@ -348,33 +363,41 @@ def main():
                         for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
                                                    (resources_df.filename != 'petMar2.cdna.fa')].iterrows()])
 
+        blast_tasks = []
         for tskiter in blast_iters:
-            tasks.extend([dict_to_task(tsk) for tsk in tskiter])
+            blast_tasks.extend([dict_to_task(tsk) for tsk in tskiter])
+        tasks.extend(blast_tasks)
+        tasks.append(group_task('blast', [t.name for t in blast_tasks]))
 
         '''
         Alignment / abundance estimation stuff
         '''
-        bt_build_tasks = resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False)
+        bt_build_tasks = list(resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False))
         index_basenames = resources_df[resources_df.meta_type == 'assembly'].filename.apply(lambda fn: fn.rstrip('.fasta'))
-        tasks.extend(list(bt_build_tasks))
+        tasks.extend(bt_build_tasks)
+        tasks.append(group_task('bowtie-build', [t.name for t in bt_build_tasks]))
 
         split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
         tasks.extend(list(split_tasks))
 
+        estimate_groups = []
         for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
             index_fn = assembly.rstrip('.fasta')
             align_tasks = list(sample_df.apply(bowtie2_align_task, args=(index_fn,), axis=1, reduce=False))
             tasks.extend(align_tasks)
+            tasks.append(group_task('align-samples-'+index_fn, [t.name for t in align_tasks]))
 
             align_files_df = task_funcs.get_task_files_df(align_tasks)
             bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1') and row.target.endswith('.bam'), axis=1)].target
             bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz') and row.target.endswith('.bam'), axis=1)].target
             sort_tasks = bam_files_to_sort.apply(samtools_sort_task)
             tasks.extend(sort_tasks)
+            tasks.append(group_task('sort-alignments-' + index_fn, [t.name for t in sort_tasks]))
 
             hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
             express_tasks = list(hits_files.apply(express_task, args=(assembly,)))
             tasks.extend(express_tasks)
+            tasks.append(group_task('express-'+index_fn, [t.name for t in express_tasks]))
 
             # The results.xprs file is always in position 1 in the targets --
             # kludgy, fix this later...
@@ -383,6 +406,9 @@ def main():
                                                          '{pref}.eXpress.eff.tsv'.format(pref=index_fn),
                                                          '{pref}.eXpress.tot.tsv'.format(pref=index_fn))
             tasks.append(agg_task)
+            tasks.append(group_task('estimate-abundance-'+index_fn, [agg_task.name]))
+            estimate_groups.append('estimate-abundance-'+index_fn)
+        tasks.append(group_task('estimate-abundance', estimate_groups))
 
         if args.print_tasks:
             for task in tasks:
