@@ -30,12 +30,17 @@
             }
         },
 
+		"pbs-params": {
+			"email": "camille.scott.w@gmail.com",
+			"account": "ged"
+		},
+
         "velvet": {
 			"template_file": "velvet.tpl",
 			"script_file": "velvet.sh",
             "time": "72:00:00",
             "n_threads": 16,
-            "mem": "512gb",
+            "mem": "1000gb",
 			"k_start": 23,
             "k_end": 43,
             "k_step": 4,
@@ -46,6 +51,16 @@
             "max_gap_count": 7,
             "min_pair_count": 7,
             "directory": "2015-petMar-sperm-velvet"
+        },
+
+        "abyss": {
+            "template_file": "abyss.tpl",
+            "script_file": "abyss.sh",
+            "time": "72:00:00",
+            "n_threads": 32,
+            "mem": "512gb",
+            "k": 25,
+            "name": "2015-petMar-sperm-abyss"
         }
     }
 }

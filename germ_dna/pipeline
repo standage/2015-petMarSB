@@ -8,7 +8,7 @@ import os
 import sys
 import json
 import pprint
-from itertools import izip
+import time
 
 import pandas as pd
 import jinja2
@@ -20,6 +20,8 @@ from doit.task import clean_targets, dict_to_task
 '''
 Define relevant task functions for pipeline
 '''
+
+CUR_TIME = time.strftime('%Y-%m-%d-%H%M')
 
 @task_funcs.create_task_object
 def diginorm_task(input_files, ksize, htsize, cutoff,
@@ -94,7 +96,7 @@ def link_files_task(src):
     return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
 
 @task_funcs.create_task_object
-def submit_velvet_task(file_list, velvet_cfg, label=''):
+def submit_velvet_task(file_list, velvet_cfg, pbs_cfg, label=''):
 
     if not label:
         label = 'velvet_' + '_'.join(file_list)
@@ -102,18 +104,74 @@ def submit_velvet_task(file_list, velvet_cfg, label=''):
     with open(velvet_cfg['template_file']) as fp:
         template = jinja2.Template(fp.read())
 
+    script_fn = CUR_TIME + '-' + velvet_cfg['script_file']
+    velvet_cfg['directory'] = CUR_TIME + '-' + velvet_cfg['directory']
+
+    velvet_cfg.update(pbs_cfg)
     def create_script(file_list, velvet_cfg, tpl):
-        with open(velvet_cfg['script_file'], 'wb') as fp:
+        with open(script_fn, 'wb') as fp:
             pbs = tpl.render(file_list=file_list, **velvet_cfg)
             fp.write(pbs)
 
-    cmd = 'qsub {fn}'.format(fn=velvet_cfg['script_file'])
+    cmd = 'qsub {fn}'.format(fn=script_fn)
 
     return {'title': title_with_actions,
             'name': label,
             'actions': [(create_script, [file_list, velvet_cfg, template]), cmd],
             'file_dep': file_list + [velvet_cfg['template_file']],
-            'targets': [velvet_cfg['directory'], velvet_cfg['script_file']]}
+            'targets': [velvet_cfg['directory'], script_fn]}
+
+@task_funcs.create_task_object
+def format_abyss_task(input_filename, output_filename, label=''):
+
+    import screed
+
+    if not label:
+        label = 'format_abyss_' + input_filename
+
+    def format_abyss():
+        with open(output_filename, 'wb') as fp:
+            for n, record in enumerate(screed.open(input_filename)):
+                if n % 2 == 0:
+                    record.name = record.name + '/1'
+                else:
+                    record.name = record.name + '/2'
+                fp.write('@{name}\n{seq}\n+\n{qual}\n'.format(name=record.name,
+                         seq=record.sequence, qual=record.quality))
+    
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [(format_abyss, [])],
+            'file_dep': [input_filename],
+            'targets': [output_filename],
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
+def submit_abyss_task(file_list, abyss_cfg, pbs_cfg, label=''):
+
+    if not label:
+        label = 'abyss_' + '_'.join(file_list)
+
+    with open(abyss_cfg['template_file']) as fp:
+        template = jinja2.Template(fp.read())
+
+    abyss_cfg['name'] = CUR_TIME + '-' + abyss_cfg['name']
+    abyss_cfg.update(pbs_cfg)
+
+    script_fn = CUR_TIME + '-' + abyss_cfg['script_file']
+    def create_script(file_list, abyss_cfg, tpl):
+        with open(script_fn, 'wb') as fp:
+            pbs = tpl.render(files=' '.join(file_list), **abyss_cfg)
+            fp.write(pbs)
+
+    cmd = 'qsub {fn}'.format(fn=script_fn)
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [(create_script, [file_list, abyss_cfg, template]),
+                        cmd],
+            'file_dep': file_list + [abyss_cfg['template_file']],
+            'targets': [script_fn]}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -184,7 +242,15 @@ def main():
     tasks.append(dg_task)
     dg_files = [fn+'.keep' for fn in dg_files]
 
-    tasks.append(submit_velvet_task(dg_files, config['pipeline']['velvet']))
+    tasks.append(submit_velvet_task(dg_files, config['pipeline']['velvet'],
+                 config['pipeline']['pbs-params'], label='velvet-' + config['pipeline']['prefix']))
+
+    abyss_files = [fn + '.abyss.fq' for fn in dg_files]
+    for infn, outfn in zip(dg_files, abyss_files):
+        tasks.append(format_abyss_task(infn, outfn))
+
+    tasks.append(submit_abyss_task(abyss_files, config['pipeline']['abyss'],
+                 config['pipeline']['pbs-params'], label='abyss-' + config['pipeline']['prefix']))
 
     if args.print_tasks:
         for task in tasks:
