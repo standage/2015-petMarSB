@@ -226,6 +226,21 @@ def group_task(group_name, task_names):
             'actions': None,
             'task_dep': task_names}
 
+@task_funcs.create_task_object
+def download_and_untar_task(url, target_dir, label=''):
+
+    cmd = 'mkdir {target_dir}; curl {url} | tar -xz -C {target_dir}'.format(**locals())
+
+    if not label:
+        label = 'dl_untar_' + target_dir.strip('/')
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [target_dir],
+            'clean': [],
+            'uptodate': [run_once]}
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--resources-metadata', default='resources-test.json')
