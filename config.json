@@ -24,6 +24,14 @@
 			"n_threads": 4
 		},
 
+        "busco": {
+            "path": "/work/BUSCO_v1.1b1/BUSCO_v1.1b1.py",
+            "n_threads": 4,
+            "vert_url": "http://busco.ezlab.org/files/vertebrata_buscos.tar.gz",
+            "db_dir": "busco_db",
+            "output_suffix": ".busco.results"
+        },
+
         "khmer": { 
             "ksize": 25,
 

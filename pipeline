@@ -149,6 +149,24 @@ def main():
         tasks.append(group_task('blast', [t.name for t in blast_tasks]))
 
         '''
+        BUSCO
+        '''
+
+        busco_cfg = config['pipeline']['busco']
+        busco_tasks = []
+        busco_db_task = download_and_untar_task(busco_cfg['vert_url'], busco_cfg['db_dir'])
+        busco_tasks.append(busco_db_task)
+
+        for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
+            output_dir = strip_seq_extension(assembly) + busco_cfg['output_suffix']
+            busco_tasks.append(busco_task(assembly, output_dir, 
+                       os.path.join(busco_cfg['db_dir'], 'vertebrata'),
+                       'trans', busco_cfg))
+
+        tasks.extend(busco_tasks)
+        tasks.append(group_task('busco', [t.name for t in busco_tasks]))
+
+        '''
         Alignment / abundance estimation stuff
         '''
         bt_build_tasks = list(resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False))

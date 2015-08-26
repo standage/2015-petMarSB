@@ -5,6 +5,8 @@ from itertools import izip
 import json
 import os
 import pprint
+import re
+from shutil import rmtree
 import sys
 
 from doit.tools import run_once, create_folder, title_with_actions
@@ -14,6 +16,16 @@ import pandas as pd
 from peasoup import task_funcs
 from peasoup.tasks import BlastTask, BlastFormatTask, CurlTask, GunzipTask, \
                             UniProtQueryTask, TruncateFastaNameTask
+
+def clean_folder(target):
+    try:
+        rmtree(target)
+    except OSError:
+        pass
+
+seq_ext = re.compile(r'(.fasta)|(.fa)|(.fastq)|(.fq)')
+def strip_seq_extension(fn):
+    return seq_ext.split(fn)[0]
 
 def create_task_object(task_dict_func):
     '''Wrapper to decorate functions returning pydoit
@@ -239,7 +251,27 @@ def download_and_untar_task(url, target_dir, label=''):
             'title': title_with_actions,
             'actions': [cmd],
             'targets': [target_dir],
-            'clean': [],
+            'clean': [(clean_folder, [target_dir])],
             'uptodate': [run_once]}
 
+# python3 BUSCO_v1.1b1/BUSCO_v1.1b1.py -in petMar2.cdna.fa -o petMar2.cdna.busco.test -l vertebrata/ -m trans -c 4
+@create_task_object
+def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg, label=''):
+    
+    if not label:
+        label = 'busco_' + input_filename
 
+    assert input_type in ['genome', 'OGS', 'trans']
+    n_threads = busco_cfg['n_threads']
+    busco_path = busco_cfg['path']
+
+    cmd = 'python3 {busco_path} -in {in_fn} -o {out_dir} -l {db_dir} -m {in_type} -c {n_threads}'.format(
+            busco_path=busco_path, in_fn=input_filename, out_dir=output_dir, db_dir=busco_db_dir, 
+            in_type=input_type, n_threads=n_threads)
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [output_dir],
+            'file_dep': [input_filename, busco_db_dir],
+            'clean': [(clean_folder, [output_dir])]}
