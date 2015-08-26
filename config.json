@@ -20,6 +20,10 @@
             "threads": 4
         },
 
+		"bowtie": {
+			"n_threads": 4
+		},
+
         "khmer": { 
             "ksize": 25,
 

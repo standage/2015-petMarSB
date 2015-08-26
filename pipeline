@@ -162,7 +162,7 @@ def main():
         estimate_groups = []
         for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
             index_fn = assembly.rstrip('.fasta')
-            align_tasks = list(sample_df.apply(bowtie2_align_task, args=(index_fn,), axis=1, reduce=False))
+            align_tasks = list(sample_df.apply(bowtie2_align_task, args=(index_fn,config['pipeline']['bowtie']['n_threads']), axis=1, reduce=False))
             tasks.extend(align_tasks)
             tasks.append(group_task('align-samples-'+index_fn, [t.name for t in align_tasks]))
 
