@@ -273,5 +273,6 @@ def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg, 
             'title': title_with_actions,
             'actions': [cmd],
             'targets': [output_dir],
-            'file_dep': [input_filename, busco_db_dir],
+            'file_dep': [input_filename],
+            'uptodate': [run_once],
             'clean': [(clean_folder, [output_dir])]}
