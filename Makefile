@@ -1,6 +1,5 @@
 n_threads=4
 
-
 environment:
 	conda env export --file environment.conda
 
@@ -12,6 +11,9 @@ print-tasks:
 
 busco:
 	./pipeline busco --resources-metadata resources.json --config-metadata config.json
+
+blast:
+	./pipeline blast --resources-metadata resources.json --config-metadata config.json
 
 databases:
 	./pipeline databases --resources-metadata resources.json --config-metadata config.json
