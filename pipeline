@@ -114,8 +114,12 @@ def main():
                                    _, row in gunzip_df.iterrows()]).tasks()]
         tasks.extend(gunzip_tasks)
 
+        hmmpress_tasks = [hmmpress_task(row.filename) for _, row in \
+                   resources_df[resources_df.meta_type == 'hmm_profiles'].iterrows()]
+        tasks.extend(hmmpress_tasks)
+
         # Truncate the long fasta names so blast doesn't choke
-        truncate_tasks = list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
+        truncate_tasks = list(gunzip_df[gunzip_df.meta_type == 'fasta_database'].apply(
                         lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)),
                         axis=1, reduce=False))
         tasks.extend(truncate_tasks)
@@ -128,7 +132,8 @@ def main():
         tasks.extend(makeblastdb_tasks)
 
         tasks.append(group_task('databases', [t.name for t in curl_tasks + uniprot_tasks + \
-                                              gunzip_tasks + truncate_tasks + makeblastdb_tasks]))
+                                              gunzip_tasks + truncate_tasks + \
+                                              makeblastdb_tasks + hmmpress_tasks]))
 
         # Run blast
         blast_iters = []
@@ -147,6 +152,15 @@ def main():
             blast_tasks.extend([dict_to_task(tsk) for tsk in tskiter])
         tasks.extend(blast_tasks)
         tasks.append(group_task('blast', [t.name for t in blast_tasks]))
+
+        # Run pfam search
+        dbfn = resources_df.ix['pfamA'].filename
+        hmmscan_tasks = []
+        for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
+            hmmscan_tasks.append(hmmscan_task(fn, fn + '.pfam-A.out', dbfn, 
+                                          config['pipeline']['hmmscan']))
+        tasks.extend(hmmscan_tasks)
+        tasks.append(group_task('hmmscan', [t.name for t in hmmscan_tasks]))
 
         '''
         BUSCO

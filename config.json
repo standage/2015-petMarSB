@@ -32,6 +32,10 @@
             "output_suffix": ".busco.results"
         },
 
+        "hmmscan": {
+            "n_threads": 8
+        },
+
         "khmer": { 
             "ksize": 25,
 

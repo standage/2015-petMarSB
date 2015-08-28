@@ -1100,6 +1100,13 @@
         "tissue": "brain"
     },
 
+    "pfamA": {
+        "access": "remote_file",
+        "db_type": "hmm",
+        "filename": "Pfam-A.hmm",
+        "meta_type": "hmm_profiles",
+        "url": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam28.0/Pfam-A.hmm.gz"
+    },
 
     "lamp10": {
         "access": "remote_file",

@@ -11,6 +11,7 @@ import sys
 
 from doit.tools import run_once, create_folder, title_with_actions
 from doit.task import clean_targets, dict_to_task
+import jinja2
 import pandas as pd
 
 from peasoup import task_funcs
@@ -276,3 +277,37 @@ def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg, 
             'file_dep': [input_filename],
             'uptodate': [run_once],
             'clean': [(clean_folder, [output_dir])]}
+
+@create_task_object
+def hmmpress_task(db_filename, label=''):
+    
+    if not label:
+        label = 'hmmpress_' + os.path.basename(db_filename)
+
+    cmd = 'hmmpress ' + db_filename
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [db_filename + ext for ext in ['.h3f', '.h3i', '.h3m', '.h3p']],
+            'file_dep': [db_filename],
+            'clean': [clean_targets]}
+
+# hmmscan --cpu 8 --domtblout lamp10.fasta.pfam-A.out Pfam-A.hmm lamp10.fasta.transdecoder_dir/longest_orfs.pep
+@create_task_object
+def hmmscan_task(input_filename, output_filename, db_filename, hmmscan_cfg, label=''):
+
+    if not label:
+        label = 'hmmscan_' + os.path.basename(input_filename) + '.x.' + \
+                os.path.basename(db_filename)
+
+    n_threads = hmmscan_cfg['n_threads']
+    cmd = 'hmmscan --cpu {n_threads} --domtblout {output_filename} \
+          {db_filename} {input_filename}'.format(**locals())
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'file_dep': [input_filename, db_filename, db_filename+'.h3p'],
+            'targets': [output_filename],
+            'clean': [clean_targets]}
