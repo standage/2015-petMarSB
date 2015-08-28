@@ -7,8 +7,8 @@ from tasks import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--resources-metadata', default='resources-test.json')
-    parser.add_argument('--config-metadata', default='config-test.json')
+    parser.add_argument('--resources-metadata', default='resources.json')
+    parser.add_argument('--config-metadata', default='config.json')
     parser.add_argument('--print-tasks', action='store_true', default=False)
     parser.add_argument('--local-file-dir', default='_data')
     args, doit_args = parser.parse_known_args()
@@ -153,14 +153,20 @@ def main():
         tasks.extend(blast_tasks)
         tasks.append(group_task('blast', [t.name for t in blast_tasks]))
 
-        # Run pfam search
+        '''
+        TransDecoder and hmmscan
+        '''
+        tdc_tasks = []
         dbfn = resources_df.ix['pfamA'].filename
-        hmmscan_tasks = []
         for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
-            hmmscan_tasks.append(hmmscan_task(fn, fn + '.pfam-A.out', dbfn, 
+            tdc_tasks.append(transdecoder_orf_task(fn, config['pipeline']['transdecoder']))
+            pep_fn = os.path.join(fn+'.transdecoder_dir', 'longest_orfss.pep')
+            tdc_tasks.append(hmmscan_task(pep_fn, fn + '.pfam-A.out', dbfn, 
                                           config['pipeline']['hmmscan']))
-        tasks.extend(hmmscan_tasks)
-        tasks.append(group_task('hmmscan', [t.name for t in hmmscan_tasks]))
+            tdc_tasks.append(transdecoder_predict_task(fn, fn + '.pfam-A.out',
+                            config['pipeline']['transdecoder']))
+        tasks.extend(tdc_tasks)
+        tasks.append(group_task('transdecoder', [t.name for t in tdc_tasks]))
 
         '''
         BUSCO
@@ -226,7 +232,8 @@ def main():
                 print('-----\n', task)
                 pprint.pprint(task.__dict__)
 
-        task_funcs.run_tasks(tasks, doit_args)
+        if doit_args:
+            task_funcs.run_tasks(tasks, doit_args)
 
     finally:
         os.chdir(old_dir)

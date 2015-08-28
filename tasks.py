@@ -293,7 +293,6 @@ def hmmpress_task(db_filename, label=''):
             'file_dep': [db_filename],
             'clean': [clean_targets]}
 
-# hmmscan --cpu 8 --domtblout lamp10.fasta.pfam-A.out Pfam-A.hmm lamp10.fasta.transdecoder_dir/longest_orfs.pep
 @create_task_object
 def hmmscan_task(input_filename, output_filename, db_filename, hmmscan_cfg, label=''):
 
@@ -311,3 +310,39 @@ def hmmscan_task(input_filename, output_filename, db_filename, hmmscan_cfg, labe
             'file_dep': [input_filename, db_filename, db_filename+'.h3p'],
             'targets': [output_filename],
             'clean': [clean_targets]}
+
+@create_task_object
+def transdecoder_orf_task(input_filename, transdecoder_cfg, label=''):
+
+    if not label:
+        label = 'TransDecoder.LongOrfs_' + os.path.basename(input_filename)
+
+    min_prot_len = transdecoder_cfg['min_prot_len']
+    cmd = 'TransDecoder.LongOrfs -t {input_filename} -m {min_prot_len}'.format(**locals())
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'file_dep': [input_filename],
+            'targets': [input_filename + '.transdecoder_dir'],
+            'clean': [(clean_folder, [input_filename + '.transdecoder_dir'])]}
+
+# TransDecoder.Predict -t lamp10.fasta --retain_pfam_hits lamp10.fasta.pfam-A.out
+@create_task_object
+def transdecoder_predict_task(input_filename, db_filename, transdecoder_cfg, label=''):
+
+    if not label:
+        label = 'TransDecoder.Predict_' + os.path.basename(input_filename)
+
+    orf_cutoff = transdecoder_cfg['orf_cutoff']
+    n_threads = transdecoder_cfg['n_threads']
+
+    cmd = 'TransDecoder.Predict -t {input_filename} --retain_pfam_hits {db_filename} \
+            --retain_long_orfs {orf_cutoff} --cpu {n_threads}'.format(**locals())
+    
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'file_dep': [input_filename, input_filename + '.transdecoder_dir', db_filename],
+            'targets': [input_filename + ext for ext in ['.bed', '.cds', '.pep', '.gff3', '.mRNA']],
+            'clean': [clean_targets, (clean_folder, [input_filename + '.transdecoder_dir'])]}

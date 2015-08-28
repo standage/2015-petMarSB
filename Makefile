@@ -7,6 +7,9 @@ environment:
 list:
 	./pipeline list --resources-metadata resources.json --config-metadata config.json
 
+print-tasks:
+	./pipeline --print-tasks --resources-metadata resources.json --config-metadata config.json
+
 busco:
 	./pipeline busco --resources-metadata resources.json --config-metadata config.json
 
