@@ -115,7 +115,9 @@ def main():
         tasks.extend(gunzip_tasks)
 
         # Truncate the long fasta names so blast doesn't choke
-        truncate_tasks = list(gunzip_df[gunzip_df.meta_type != 'gtf_database'].apply(
+        truncate_tasks = list(gunzip_df[(gunzip_df.meta_type != 'gtf_database') & \
+                                        (gunzip_df.meta_type != 'text_file') & \
+                                        (gunzip_df.filename != 'uniref90.fasta')].apply(
                         lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)),
                         axis=1, reduce=False))
         tasks.extend(truncate_tasks)
