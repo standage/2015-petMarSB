@@ -160,7 +160,7 @@ def main():
         dbfn = resources_df.ix['pfamA'].filename
         for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
             tdc_tasks.append(transdecoder_orf_task(fn, config['pipeline']['transdecoder']))
-            pep_fn = os.path.join(fn+'.transdecoder_dir', 'longest_orfss.pep')
+            pep_fn = os.path.join(fn+'.transdecoder_dir', 'longest_orfs.pep')
             tdc_tasks.append(hmmscan_task(pep_fn, fn + '.pfam-A.out', dbfn, 
                                           config['pipeline']['hmmscan']))
             tdc_tasks.append(transdecoder_predict_task(fn, fn + '.pfam-A.out',

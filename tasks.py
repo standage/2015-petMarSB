@@ -324,7 +324,7 @@ def transdecoder_orf_task(input_filename, transdecoder_cfg, label=''):
             'title': title_with_actions,
             'actions': [cmd],
             'file_dep': [input_filename],
-            'targets': [input_filename + '.transdecoder_dir'],
+            'targets': [input_filename + '.transdecoder_dir/longest_orfs.pep'],
             'clean': [(clean_folder, [input_filename + '.transdecoder_dir'])]}
 
 # TransDecoder.Predict -t lamp10.fasta --retain_pfam_hits lamp10.fasta.pfam-A.out
@@ -343,6 +343,6 @@ def transdecoder_predict_task(input_filename, db_filename, transdecoder_cfg, lab
     return {'name': label,
             'title': title_with_actions,
             'actions': [cmd],
-            'file_dep': [input_filename, input_filename + '.transdecoder_dir', db_filename],
+            'file_dep': [input_filename, input_filename + '.transdecoder_dir/longest_orfs.pep', db_filename],
             'targets': [input_filename + ext for ext in ['.bed', '.cds', '.pep', '.gff3', '.mRNA']],
             'clean': [clean_targets, (clean_folder, [input_filename + '.transdecoder_dir'])]}
