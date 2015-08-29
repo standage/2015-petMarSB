@@ -2,18 +2,38 @@
 
 import pandas as pd
 
-cols = ['target_name', 'target_accession', 'tlen', 'query_name', 
+hmmscan_cols = ['target_name', 'target_accession', 'tlen', 'query_name', 
         'query_accession', 'query_len', 'full_evalue', 'full_score', 
         'full_bias', 'domain_num', 'domain_total', 'domain_c_value', 
         'domain_i_evalue', 'domain_score', 'domain_bias', 'hmm_coord_from', 
         'hmm_coord_to', 'ali_coord_from', 'ali_coord_to', 'env_coord_from', 
         'env_coord_to', 'accuracy', 'description']
 
+gff3_transdecoder_cols = ['seqid', 'feature_type', 'start', 'end', 'strand']
+
 def hmmscan_to_df(fn):
 
     data = []
-    with open('_work/lamp10.fasta.pfam-A.out') as fp:
+    with open(fn) as fp:
         for ln in fp:
             tokens = ln.split()
-            data.append(tokens[:len(cols)-1] + [' '.join(tokens[len(cols)-1:])])
-    return pd.DataFrame(data[3:], columns=cols)
+            data.append(tokens[:len(hmmscan_cols)-1] + [' '.join(tokens[len(hmmscan_cols)-1:])])
+    return pd.DataFrame(data[3:], columns=hmmscan_cols)
+
+def gff3_transdecoder_to_df(fn):
+    data = []
+    with open(fn) as fp:
+        for ln in fp:
+            if ln == '\n':
+                continue
+            tokens = ln.split('\t')
+            try:
+                data.append([tokens[0]] + tokens[2:5] + [tokens[6]])
+            except IndexError as e:
+                print e
+                print tokens
+                break
+    df = pd.DataFrame(data, columns=gff3_transdecoder_cols)
+    df.set_index('seqid', inplace=True)
+    return df
+
