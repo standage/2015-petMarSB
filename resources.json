@@ -1198,7 +1198,7 @@
 		"access": "remote_file",
 		"db_type": "prot",
 		"filename": "uniref90.fasta",
-		"meta_type": "fasta_database",
+		"meta_type": "huge_fasta_database",
 		"url": "ftp://ftp.uniprot.org/pub/databases/uniprot/uniref/uniref90/uniref90.fasta.gz"
 	}
 }

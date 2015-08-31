@@ -12,13 +12,20 @@ hmmscan_cols = ['target_name', 'target_accession', 'tlen', 'query_name',
 gff3_transdecoder_cols = ['seqid', 'feature_type', 'start', 'end', 'strand']
 
 def hmmscan_to_df(fn):
-
+    def split_query(item):
+        q, _, _ = item.partition('|')
+        return q
     data = []
     with open(fn) as fp:
         for ln in fp:
+            if ln.startswith('#'):
+                continue
             tokens = ln.split()
             data.append(tokens[:len(hmmscan_cols)-1] + [' '.join(tokens[len(hmmscan_cols)-1:])])
-    return pd.DataFrame(data[3:], columns=hmmscan_cols)
+    df = pd.DataFrame(data, columns=hmmscan_cols)
+    df.query_name = df.query_name.apply(split_query)
+    df.set_index('query_name', inplace=True)
+    return df
 
 def gff3_transdecoder_to_df(fn):
     data = []
