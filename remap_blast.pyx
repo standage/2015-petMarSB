@@ -47,11 +47,3 @@ cpdef np.ndarray[long, ndim=2] fix_blast_coords(np.ndarray[long] sstart, np.ndar
         res[i,:] = fix_coords_single(sstart[i], send[i], qstart[i], qend[i])
     return res
 
-def remap_blast_coords_df(df):
-    coords = fix_blast_coords(df.sstart.values, df.send.values, df.qstart.values, df.qend.values)
-    df['sstart'] = coords[:,0]
-    df['send'] = coords[:,1]
-    df['qstart'] = coords[:,2]
-    df['qend'] = coords[:,3]
-    df['sstrand'] = coords[:,4]
-    df['qstrand'] = coords[:,5]

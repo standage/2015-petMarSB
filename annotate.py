@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import pyximport; pyximport.install()
-import remap_blast
 
 from itertools import izip
 import json
@@ -22,7 +20,7 @@ import hmmertools
 
 @create_task_object
 def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmmscan_fn,
-                               sample_df, annotation_fn):
+                               sample_df, tpm_fn, annotation_fn):
 
     def get_store():
         return pd.HDFStore(annotation_fn, complib='zlib', complevel=5)
@@ -53,11 +51,11 @@ def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmms
             print('\t...working on {}'.format(target))
             
             df = blasttools.blast_to_df(target)
-            remap_blast.remap_blast_coords_df(df)
+            blasttools.remap_blast_coords_df(df)
 
             #store[target] = df
 
-            tmp = pd.merge(pd.DataFrame(index=tpm_df.index), df,
+            tmp = pd.merge(pd.DataFrame(index=store['annot_df'].index), df,
                               left_index=True, right_index=True, how='left')
             blasttools.best_hits(tmp)
 
@@ -75,7 +73,7 @@ def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmms
     for db_fn in blast_targets:
         A_fn = '{}.x.{}.db.tsv'.format(assembly_fn, db_fn)
         B_fn = '{}.db.x.{}.tsv'.format(db_fn, assembly_fn)
-        name = 'x_'.format(strip_seq_extension(db_fn))
+        name = 'x_{}'.format(strip_seq_extension(db_fn))
         ortho_files.append((name, A_fn, B_fn))
 
     def get_orthologies():
@@ -87,10 +85,10 @@ def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmms
             A = blasttools.blast_to_df(A_fn)
             B = blasttools.blast_to_df(B_fn)
 
-            remap_blast.remap_blast_coords_df(A)
-            remap_blast.remap_blast_coords_df(B)
+            blasttools.remap_blast_coords_df(A)
+            blasttools.remap_blast_coords_df(B)
             
-            X = blasttools.get_orthologies(A, B, tpm_df.index)
+            X = blasttools.get_orthologies(A, B, store['annot_df'].index)
             
             if i == 0:
                 ortho_panel = pd.Panel({name: X})
@@ -106,7 +104,7 @@ def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmms
         print('--- Parsing TransDecoder results...')
         store = get_store()
         transdecoder_df = hmmertools.gff3_transdecoder_to_df(transdecoder_fn)
-        store['transdecoder_dr'] = transdecoder_df
+        store['transdecoder_df'] = transdecoder_df
         store.close()
     
 
@@ -127,7 +125,8 @@ def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmms
         store['tpm_df'] = tpm_df
         store.close()
 
-    actions = [(get_assembly_df, []), (get_best_hits, []), (get_orthologies, []),
+    actions = ['rm -f {}'.format(annotation_fn), (get_assembly_df, []), 
+               (get_best_hits, []), (get_orthologies, []),
                (get_transdecoder, []), (get_pfam, []), (get_tpm, [])]
 
     blast_file_dep = []
@@ -135,7 +134,7 @@ def aggregate_annotations_task(assembly_fn, blast_targets, transdecoder_fn, hmms
         blast_file_dep.append(fn)
     for _, A_fn, B_fn in ortho_files:
         blast_file_dep.extend([A_fn, B_fn])
-    file_dep = [assembly_fn, transdecoder_fn, hmmscan_fn] + blast_file_dep
+    file_dep = [assembly_fn, transdecoder_fn, hmmscan_fn, tpm_fn] + blast_file_dep
 
     return {'title': title_with_actions,
             'name': 'aggregate_annotations_' + assembly_fn,

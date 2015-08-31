@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-
+import pyximport
+import numpy
+pyximport.install(setup_args={"include_dirs":numpy.get_include()}, reload_support=True)
+import remap_blast
 import csv
 import sys
 import pandas as pd
@@ -35,3 +38,12 @@ def get_orthologies(A, B, idx, comp_col='evalue'):
     del X['sseqid_y']
 
     return X
+
+def remap_blast_coords_df(df):
+    coords = remap_blast.fix_blast_coords(df.sstart.values, df.send.values, df.qstart.values, df.qend.values)
+    df['sstart'] = coords[:,0]
+    df['send'] = coords[:,1]
+    df['qstart'] = coords[:,2]
+    df['qend'] = coords[:,3]
+    df['sstrand'] = coords[:,4]
+    df['qstrand'] = coords[:,5]

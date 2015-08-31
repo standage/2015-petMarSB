@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 import argparse
-
+from annotate import *
 from tasks import *
 
 def main():
@@ -226,6 +226,18 @@ def main():
             tasks.append(group_task('estimate-abundance-'+index_fn, [agg_task.name]))
             estimate_groups.append('estimate-abundance-'+index_fn)
         tasks.append(group_task('estimate-abundance', estimate_groups))
+
+
+        blast_targets = list(resources_df[(resources_df.meta_type == 'fasta_database') &
+                                          (resources_df.meta_type != 'assembly')].filename)
+        for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
+            ann_task = aggregate_annotations_task(assembly, blast_targets, 
+                                                  assembly+'.transdecoder.gff3',
+                                                  assembly+'.pfam-A.out', sample_df,
+                                                  strip_seq_extension(assembly)+'.eXpress.tpm.tsv',
+                                                  assembly+'.annotations.h5')
+            tasks.append(ann_task)
+
 
         if args.print_tasks:
             for task in tasks:
