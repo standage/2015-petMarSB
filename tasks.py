@@ -142,38 +142,112 @@ def blast_task(row, config, assembly):
                         params=blast_params).tasks().next()
 
 @create_task_object
-def link_files_task(src):
+def link_file_task(src):
+    ''' Soft-link file to the current directory
+    '''
     cmd = 'ln -fs {src}'.format(src=src)
-    return task_funcs.general_cmdline_task([src], [os.path.basename(src)], cmd)
+    return {'title': title_with_actions,
+            'name': 'ln_' + os.path.basename(src),
+            'actions': [cmd],
+            'targets': [os.path.basename(src)],
+            'uptodate': [run_once],
+            'clean': [clean_targets]}
 
-@create_task_object
-def bowtie2_build_task(row):
-    return task_funcs.bowtie2_build_task(row.filename, row.filename.split('.fasta')[0])
+@create_task_boject
+def bowtie2_build_task(input_fn, db_basename, bowtie2_cfg):
+
+    extra_args = bowtie2_cfg['extra_args']
+    cmd = 'bowtie2-build {extra_args} {input_fn} {target_basename_fn}'.format(**locals())
+    
+    targets = [db_basename+ext for ext in \
+                ['.1.bt2', '.2.bt2', '.3.bt2', '.4.bt2', '.rev.1.bt2', '.rev.2.bt2']]
+    targets.append(target_basename_fn)
+    name = 'bowtie2_build_{db_basename}'.format(**locals())
+    return {'title': title_with_actions,
+            'name': db_basename,
+            'actions': [cmd, 'touch {db_basename}'.format(**locals())],
+            'targets': targets,
+            'file_dep': [input_fn],
+            'clean': [clean_targets] }
 
 @create_task_object
 def split_pairs_task(row):
     return task_funcs.split_pairs_task(row.filename)
 
-@create_task_object
-def bowtie2_align_task(row, idx_fn, n_threads):
-    target = '{sample}.x.{idx}'.format(sample=row.filename, idx=idx_fn)
-    encoding = '--' + row.phred
-    if row.paired == False:
-        return task_funcs.bowtie2_align_task(idx_fn, target, singleton_fn=row.filename,
-                                             num_threads=n_threads, encoding=encoding)
+
+def bowtie2_align_task(db_basename, target_fn, bowtie2_cfg, left_fn='', right_fn='', singleton_fn='',
+                        read_fmt='-q', samtools_convert=True,
+                        encoding='phred33'):
+
+    assert read_fmt in ['-q', '-f']
+    assert encoding in ['phred33', 'phred64']
+    encoding = '--' + encoding
+    if (left_fn or right_fn):
+        assert (left_fn and right_fn)
+    n_threads = bowtie2_cfg['n_threads']
+    extra_args = bowtie2_cfg['extra_args']
+    cmd = 'bowtie2 -p {n_threads} {extra_args} {encoding} {read_fmt} -x {index_basename_fn} '.format(**locals())
+    
+    file_dep = [index_basename_fn]
+    targets = []
+
+    name = 'bowtie2_align' + ''.join('+' + fn if fn else fn for fn in [left_fn, right_fn, singleton_fn, index_basename_fn])
+
+    if left_fn:
+        file_dep.extend([left_fn, right_fn])
+        left_fn = '-1 ' + left_fn
+        right_fn = '-2 ' + right_fn
+    if singleton_fn:
+        file_dep.append(singleton_fn)
+        singleton_fn = '-U ' + singleton_fn
+    if samtools_convert:
+        targets.append(target_fn + '.bam')
+        target_fn = ' | samtools view -Sb - > {target_fn}.bam'.format(**locals())
     else:
-        return task_funcs.bowtie2_align_task(idx_fn, target, left_fn=row.filename+'.1',
-                                                right_fn=row.filename + '.2', singleton_fn=row.filename + '.0',
-                                                num_threads=n_threads, encoding=encoding)
+        targets.append(target_fn)
+        target_fn = '-S ' + target_fn
+
+    cmd = cmd + '{left_fn} {right_fn} {singleton_fn} {target_fn}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': name,
+            'actions': [cmd],
+            'targets': targets,
+            'file_dep': file_dep,
+            'clean': [clean_targets] }
+
 
 @create_task_object
-def express_task(hits_fn, transcripts_fn):
-    folder = hits_fn.split('.bam')[0]
-    return task_funcs.eXpress_task(transcripts_fn, hits_fn, folder)
+def eXpress_task(transcripts_fn, hits_fn, results_folder):
+
+    cmd = 'express -o {results_folder} {transcripts_fn} {hits_fn}'.format(**locals())
+
+    name = 'eXpress_{transcripts_fn}_{results_folder}'.format(**locals())
+
+    targets = [os.path.join(results_folder, 'params.xprs'),
+                os.path.join(results_folder, 'results.xprs'),
+                results_folder]
+
+    return {'title': title_with_actions,
+            'name': name,
+            'actions': [cmd],
+            'targets': targets,
+            'file_dep': [transcripts_fn, hits_fn],
+            'clean': [clean_targets] }
 
 @create_task_object
-def samtools_sort_task(hits_fn):
-    return task_funcs.samtools_sort_task(hits_fn)
+def samtools_sort_task(bam_fn):
+    
+    cmd = 'samtools sort -n {bam_fn} {bam_fn}.sorted'.format(**locals())
+
+    name = 'samtools_sort_{bam_fn}'.format(**locals())
+
+    return {'name': name,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [bam_fn + '.sorted.bam'],
+            'file_dep': [bam_fn],
+            'clean': [clean_targets] }
 
 @create_task_object
 def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_target_fn, label=''):
@@ -233,6 +307,69 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
             'targets': [eff_target_fn, tpm_target_fn, tot_target_fn],
             'clean': [clean_targets],
             'file_dep': results_files}
+
+@create_task_object
+def trimmomatic_pe_task(left_in, right_in, left_paired_out, left_unpaired_out, 
+                     right_paired_out, right_unpaired_out, encoding, trim_cfg):
+
+    assert encoding in ['phred33', 'phred64']
+    name = 'TrimmomaticPE_' + left_in + '_' + right_in
+
+    params = trim_cfg['params']
+    n_threads = trim_cfg['n_threads']
+    cmd = 'TrimmomaticPE -{encoding} -threads {n_threads} {left_in} {right_in} {left_paired_out} {left_unpaired_out} '\
+          '{right_paired_out} {right_unpaired_out} {params}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': name,
+            'actions': [cmd],
+            'file_dep': [left_in, right_in],
+            'targets': [left_paired_out, left_unpaired_out, right_paired_out, right_unpaired_out],
+            'clean': [clean_targets]}
+
+@create_task_object
+def trimmomatic_se_task(sample_fn, output_fn. encoding, trim_cfg):
+    assert encoding in ['phred33', 'phred64']
+    name = 'TrimmomaticSE_' + left_in + '_' + right_in
+
+    params = trim_cfg['params']
+    n_threads = trim_cfg['n_threads']
+    cmd = 'TrimmomaticSE -{encoding} -threads {n_threads} {sample_fn} '\
+          '{output_fn} {params}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': name,
+            'actions': [cmd],
+            'file_dep': [sample_fn],
+            'targets': [output_fn],
+            'clean': [clean_targets]}
+
+@create_task_object
+def interleave_task(left_in, right_in, out_fn, label=''):
+
+    if not label:
+        label = 'interleave_' + out_fn
+
+    cmd = 'interleave-reads.py {left_in} {right_in} -o {out_fn}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': label,
+            'actions': [cmd],
+            'file_dep': [left_in, right_in],
+            'targets': [out_fn],
+            'clean': [clean_targets]}
+
+@task_funcs.create_task_object
+def cat_task(file_list, target_fn):
+
+    cmd = 'cat {files} > {t}'.format(files=' '.join(file_list), t=target_fn)
+
+    return {'title': title_with_actions,
+            'name': 'cat_' + target_fn,
+            'actions': [cmd],
+            'file_dep': file_list,
+            'targets': [target_fn],
+            'clean': [clean_targets]}
 
 @create_task_object
 def group_task(group_name, task_names):

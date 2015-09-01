@@ -5,12 +5,109 @@ import argparse
 from annotate import *
 from tasks import *
 
+def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
+    
+    tasks = []
+
+    '''
+    The first task is to build the bowtie2 index for the assembly.
+    We'll generate the basename from the assembly filename, then give it
+    to the task creator.
+    '''
+    bt2_db_basename = strip_seq_extension(assembly_fn) + '.bt2idx'
+    bt2_build_cfg = config['pipeline']['bowtie2_build']
+    bt2_build_task = bowtie2_build_task(assembly_fn, bt2_db_basename, bt2_build_cfg)
+    tasks.append(bt2_build_task)
+
+    #split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
+    #tasks.extend(list(split_tasks))
+
+    '''
+    Now we generate the align and eXpress tasks for each sample
+    '''
+    for key, row in sample_df.iterrows():
+        target_fn = '{sample}.x.{idx}'.format(sample=row.filename, idx=bt2_db_basename)
+        encoding = row.encoding
+        sample_fn = row.filename
+        bowtie2_align_cfg = config['pipeline']['bowtie2_build']
+
+        if row.paired == True:
+            align_task = bowtie2_align_task(bt2_db_basename, target_fn, bowtie2_align_cfg,
+                                            left_fn=sample_fn+'.1', right_fn=sample_fn+'.2',
+                                            singleton_fn=sample_fn+'.0', encoding=encoding)
+            tasks.append(align_task)
+            # We have to sort results with samtools when we have paired input
+            sort_task = samtools_sort_task(target_fn + '.bam')
+            tasks.append(sort_task)
+            # The final result has a rather verbose extension
+            bam_fn = target_fn + '.bam.sorted.bam'
+        else:
+            align_task = bowtie2_align_task(bt2_db_basename, target_fn, bowtie2_align_cfg,
+                                            singleton_fn=sample_fn, encoding=encoding)
+            tasks.append(align_task)
+            bam_fn = target_fn + '.bam'
+        
+        # Generate directory name for eXpress results
+        express_dir = bam_fn.split('.bam')[0]
+        express_task = eXpress_task(assembly_fn, bam_fn, express_dir)
+        tasks.append(express_task)
+
+        # Get the eXpress results file
+        express_results = os.path.join(express_dir, 'results.xprs')
+        # Aggregate them
+        agg_task = aggregate_express_task(express_files,
+                                          '{pref}.eXpress.tpm.tsv'.format(pref=assembly_fn),
+                                          '{pref}.eXpress.eff.tsv'.format(pref=assembly_fn),
+                                          '{pref}.eXpress.tot.tsv'.format(pref=assembly_fn))
+        tasks.append(agg_task)
+    
+    return tasks
+
+def get_sample_prep_tasks(sample_df, config, data_dir):
+    tasks = []
+    '''
+    First, we link all the files into the current directory.
+    '''
+    for key, row in sample_df.iterrows():
+        tasks.append(link_file_task(os.path.join(data_dir, row.filename)))
+
+    
+
+    # Run diginorm in parallel on all samples
+    ksize = config['pipeline']['khmer']['ksize']
+    htsize = config['pipeline']['khmer']['parallel']['table_size']
+    ntables = config['pipeline']['khmer']['parallel']['n_tables']
+    coverage = config['pipeline']['khmer']['parallel']['coverage']
+    dg_tasks = sample_df.apply(
+                        lambda row: diginorm_task([row.filename], ksize,
+                            htsize, coverage, ntables), axis=1, reduce=False)
+    tasks.extend(list(dg_tasks))
+    tasks.append(group_task('normalize-pass-1', [t.name for t in dg_tasks]))
+    dg_outputs = sample_df.filename.apply(lambda fn: fn+'.keep')
+
+    htsize = config['pipeline']['khmer']['pooled']['table_size']
+    ntables = config['pipeline']['khmer']['pooled']['n_tables']
+    coverage = config['pipeline']['khmer']['pooled']['coverage']
+    ht_fn = config['pipeline']['prefix'] + '.pooled.ct'
+    dg_task = diginorm_task(list(dg_outputs), ksize, htsize, coverage,
+                            n_tables=ntables, ht_outfn=ht_fn)
+    tasks.append(dg_task)
+    tasks.append(group_task('normalize-pass-2', [dg_task.name]))
+    dg_outputs = dg_outputs.apply(lambda fn: fn+'.keep')
+
+    minabund = config['pipeline']['khmer']['parallel']['min_abund']
+    abf_task = filter_abund_task(list(dg_outputs), ht_fn, minabund, coverage)
+    tasks.append(group_task('filter-abund', [abf_task.name]))
+    tasks.append(abf_task)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--resources-metadata', default='resources.json')
     parser.add_argument('--config-metadata', default='config.json')
     parser.add_argument('--print-tasks', action='store_true', default=False)
     parser.add_argument('--local-file-dir', default='_data')
+    parser.add_argument('--assembly-file', default='lamp10.fasta')
     args, doit_args = parser.parse_known_args()
 
     with open(args.resources_metadata, 'r') as fp:
@@ -36,6 +133,8 @@ def main():
            desc=config['meta']['description'])
     print(desc, file=sys.stderr)
 
+    assembly_fn = args.assembly_file
+
     work_dir = config['pipeline']['work_dir']
     local_dir = os.path.abspath(args.local_file_dir)
 
@@ -55,37 +154,7 @@ def main():
         Sample preprocessing
         '''
 
-        link_tasks = sample_df.filename.apply(lambda fn: os.path.join(local_dir, fn)).apply(link_files_task)
-        tasks.extend(list(link_tasks))
-        tasks.append(group_task('link-samples', [t.name for t in link_tasks]))
-
-        # Run diginorm in parallel on all samples
-        ksize = config['pipeline']['khmer']['ksize']
-        htsize = config['pipeline']['khmer']['parallel']['table_size']
-        ntables = config['pipeline']['khmer']['parallel']['n_tables']
-        coverage = config['pipeline']['khmer']['parallel']['coverage']
-        dg_tasks = sample_df.apply(
-                            lambda row: diginorm_task([row.filename], ksize,
-                                htsize, coverage, ntables), axis=1, reduce=False)
-        tasks.extend(list(dg_tasks))
-        tasks.append(group_task('normalize-pass-1', [t.name for t in dg_tasks]))
-        dg_outputs = sample_df.filename.apply(lambda fn: fn+'.keep')
-
-        htsize = config['pipeline']['khmer']['pooled']['table_size']
-        ntables = config['pipeline']['khmer']['pooled']['n_tables']
-        coverage = config['pipeline']['khmer']['pooled']['coverage']
-        ht_fn = config['pipeline']['prefix'] + '.pooled.ct'
-        dg_task = diginorm_task(list(dg_outputs), ksize, htsize, coverage,
-                                n_tables=ntables, ht_outfn=ht_fn)
-        tasks.append(dg_task)
-        tasks.append(group_task('normalize-pass-2', [dg_task.name]))
-        dg_outputs = dg_outputs.apply(lambda fn: fn+'.keep')
-
-        minabund = config['pipeline']['khmer']['parallel']['min_abund']
-        abf_task = filter_abund_task(list(dg_outputs), ht_fn, minabund, coverage)
-        tasks.append(group_task('filter-abund', [abf_task.name]))
-        tasks.append(abf_task)
-
+ 
         tasks.append(group_task('preprocess', ['link-samples', 'normalize-pass-1', 'normalize-pass-2', 'filter-abund']))
         '''
         Database prep, homology search
@@ -186,46 +255,9 @@ def main():
         tasks.extend(busco_tasks)
         tasks.append(group_task('busco', [t.name for t in busco_tasks]))
 
-        '''
-        Alignment / abundance estimation stuff
-        '''
-        bt_build_tasks = list(resources_df[resources_df.meta_type == 'assembly'].apply(bowtie2_build_task, axis=1, reduce=False))
-        index_basenames = resources_df[resources_df.meta_type == 'assembly'].filename.apply(lambda fn: fn.rstrip('.fasta'))
-        tasks.extend(bt_build_tasks)
-        tasks.append(group_task('bowtie-build', [t.name for t in bt_build_tasks]))
-
-        split_tasks = sample_df[sample_df.paired == True].apply(split_pairs_task, axis=1, reduce=False)
-        tasks.extend(list(split_tasks))
-
-        estimate_groups = []
-        for assembly in list(resources_df[resources_df.meta_type == 'assembly'].filename):
-            index_fn = assembly.rstrip('.fasta')
-            align_tasks = list(sample_df.apply(bowtie2_align_task, args=(index_fn,config['pipeline']['bowtie']['n_threads']), axis=1, reduce=False))
-            tasks.extend(align_tasks)
-            tasks.append(group_task('align-samples-'+index_fn, [t.name for t in align_tasks]))
-
-            align_files_df = task_funcs.get_task_files_df(align_tasks)
-            bam_files_to_sort = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.1') and row.target.endswith('.bam'), axis=1)].target
-            bam_files_single = align_files_df[align_files_df.apply(lambda row: row.dep.endswith('.fq.gz') and row.target.endswith('.bam'), axis=1)].target
-            sort_tasks = bam_files_to_sort.apply(samtools_sort_task)
-            tasks.extend(sort_tasks)
-            tasks.append(group_task('sort-alignments-' + index_fn, [t.name for t in sort_tasks]))
-
-            hits_files = bam_files_single.append(sort_tasks.apply(lambda t: t.targets[0]))
-            express_tasks = list(hits_files.apply(express_task, args=(assembly,)))
-            tasks.extend(express_tasks)
-            tasks.append(group_task('express-'+index_fn, [t.name for t in express_tasks]))
-
-            # The results.xprs file is always in position 1 in the targets --
-            # kludgy, fix this later...
-            express_files = [t.targets[1] for t in express_tasks]
-            agg_task = aggregate_express_task(express_files, '{pref}.eXpress.tpm.tsv'.format(pref=index_fn),
-                                                         '{pref}.eXpress.eff.tsv'.format(pref=index_fn),
-                                                         '{pref}.eXpress.tot.tsv'.format(pref=index_fn))
-            tasks.append(agg_task)
-            tasks.append(group_task('estimate-abundance-'+index_fn, [agg_task.name]))
-            estimate_groups.append('estimate-abundance-'+index_fn)
-        tasks.append(group_task('estimate-abundance', estimate_groups))
+        abundance_tasks = get_abundance_estimation(assembly_fn, sample_df, config)
+        tasks.extend(abundance_tasks)
+        tasks.append(group_task('abundance', [t.name for t in abundance_tasks]))
 
 
         blast_targets = list(resources_df[(resources_df.meta_type == 'fasta_database') &

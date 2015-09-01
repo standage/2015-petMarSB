@@ -10,8 +10,9 @@
         "prefix": "petMarSB",
         "work_dir": "_work",
         
-        "trimmomatic": { 
-            "params": "LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:32" 
+        "trimmomatic": {
+            "params": "LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:32",
+            "n_threads": 1
         },
 
         "blast": { 
@@ -20,9 +21,15 @@
             "threads": 4
         },
 
-		"bowtie": {
-			"n_threads": 4
+		"bowtie2_build": {
+			"n_threads": 4,
+            "extra_args": "--offrate 1"
 		},
+
+        "bowtie2_align": {
+            "n_threads": 4,
+            "extra_args": "--mm -a -X 600 --rdg 6,5 --rfg 6,5 --score-min L,-.6,-.4 --no-discordant --no-mixed"
+        },
 
         "busco": {
             "path": "/work/BUSCO_v1.1b1/BUSCO_v1.1b1.py",
