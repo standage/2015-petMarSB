@@ -1113,7 +1113,7 @@
         "db_type": "nucl",
         "filename": "lamp10.fasta",
         "meta_type": "assembly",
-        "url": "http://athyra.ged.msu.edu/~camille/lamprey/lamp10.fasta.gz"
+        "url": "https://s3-us-west-1.amazonaws.com/2015-petmarsb/lamp10.fasta.gz"
     },
 
     "braFlo_pep": {

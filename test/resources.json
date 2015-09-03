@@ -1,0 +1,115 @@
+{
+    "Muscle": {
+        "access": "local_file",
+        "condition": "m_sperm",
+        "db_type": "nucl",
+        "filename": "Muscle.fq.gz",
+        "flowcell": "42UL4",
+        "label": "muscle_m_sperm_42UL4",
+        "meta_type": "sample",
+        "paired": false,
+        "phred": "phred33",
+        "strand": "+/-",
+        "tissue": "muscle"
+    },
+    "Neutrophils": {
+        "access": "local_file",
+        "condition": "",
+        "db_type": "nucl",
+        "filename": "Neutrophils.fq.gz",
+        "flowcell": "61504",
+        "label": "neutrophils_61504",
+        "meta_type": "sample",
+        "paired": false,
+        "phred": "phred33",
+        "strand": "+/-",
+        "tissue": "neutrophils"
+    },
+    "brain_paired": {
+        "access": "local_file",
+        "condition": "",
+        "db_type": "nucl",
+        "filename": "brain_paired.qc.fq.gz",
+        "flowcell": "30M2H",
+        "label": "brain_30M2H",
+        "meta_type": "sample",
+        "paired": true,
+        "phred": "phred64",
+        "strand": "+/-",
+        "tissue": "brain"
+    },
+    "Myxinidae_pep": {
+        "access": "remote_query",
+        "db_type": "prot",
+        "filename": "Myx.pep.all.fa",
+        "meta_type": "fasta_database",
+        "q_type": "uniprot",
+        "terms": "taxonomy:7762"
+    },
+    "pfamA": {
+        "access": "remote_file",
+        "db_type": "hmm",
+        "filename": "Pfam-A.hmm",
+        "meta_type": "hmm_profiles",
+        "url": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam28.0/Pfam-A.hmm.gz"
+    },
+
+    "lamp-test": {
+        "access": "remote_file",
+        "db_type": "nucl",
+        "filename": "lamp-test.fasta",
+        "meta_type": "assembly",
+        "url": "https://s3-us-west-1.amazonaws.com/2015-petmarsb/lamp-test.fasta.gz"
+    },
+
+    "braFlo_pep": {
+        "access": "remote_query",
+        "db_type": "prot",
+        "filename": "braFlo.pep.all.fa",
+        "meta_type": "fasta_database",
+        "q_type": "uniprot",
+        "terms": "organism:7739+AND+keyword:1185"
+    },
+    "danRer_pep": {
+        "access": "remote_file",
+        "db_type": "prot",
+        "filename": "danRer.pep.fa",
+        "meta_type": "fasta_database",
+        "url": "ftp://ftp.ensembl.org/pub/release-75/fasta/danio_rerio/pep/Danio_rerio.Zv9.75.pep.all.fa.gz"
+    },
+    "petMar2_gtf": {
+	    "access": "remote_file",
+	    "db_type": "feature",
+	    "filename": "petMar2.gtf",
+	    "meta_type": "gtf_database",
+	    "url": "http://ftp.ensembl.org/pub/release-75/gtf/petromyzon_marinus/Petromyzon_marinus.Pmarinus_7.0.75.gtf.gz"
+    },
+	"petMar2_genes": {
+	    "access": "remote_file",
+		"db_type": "gene",
+		"filename": "petMar2.genes.txt",
+		"meta_type": "text_file",
+		"url": "ftp://hgdownload.cse.ucsc.edu/goldenPath/petMar2/database/geneName.txt.gz"
+	},
+    "petMar2_cdna": {
+        "access": "remote_file",
+        "db_type": "nucl",
+        "filename": "petMar2.cdna.fa",
+        "meta_type": "fasta_database",
+        "url": "ftp://ftp.ensembl.org/pub/release-75/fasta/petromyzon_marinus/cdna/Petromyzon_marinus.Pmarinus_7.0.75.cdna.all.fa.gz"
+    },
+    "petMar2_ncrna": {
+        "access": "remote_file",
+        "db_type": "nucl",
+        "filename": "petMar2.ncrna.fa",
+        "meta_type": "fasta_database",
+        "url": "ftp://ftp.ensembl.org/pub/release-75/fasta/petromyzon_marinus/ncrna/Petromyzon_marinus.Pmarinus_7.0.75.ncrna.fa.gz"
+    },
+    "petMar2_pep": {
+        "access": "remote_file",
+        "db_type": "prot",
+        "filename": "petMar2.pep.fa",
+        "meta_type": "fasta_database",
+        "url": "ftp://ftp.ensembl.org/pub/release-75/fasta/petromyzon_marinus/pep/Petromyzon_marinus.Pmarinus_7.0.75.pep.all.fa.gz"
+    },
+}

@@ -8,7 +8,7 @@
 
     "pipeline": {
         "prefix": "petMarSB",
-        "work_dir": "_work",
+        "work_dir": "_test",
         
         "trimmomatic": {
             "params": "LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:32",
@@ -18,43 +18,43 @@
         "blast": { 
             "evalue": 0.000001,
             "params": "",
-            "threads": 4
+            "threads": 1
         },
 
 		"bowtie2_build": {
-			"n_threads": 4,
+			"n_threads": 1,
             "extra_args": "--offrate 1"
 		},
 
         "bowtie2_align": {
-            "n_threads": 4,
+            "n_threads": 1,
             "extra_args": "--mm -a -X 600 --rdg 6,5 --rfg 6,5 --score-min L,-.6,-.4 --no-discordant --no-mixed"
         },
 
         "busco": {
             "path": "/work/BUSCO_v1.1b1/BUSCO_v1.1b1.py",
-            "n_threads": 4,
+            "n_threads": 1,
             "vert_url": "http://busco.ezlab.org/files/vertebrata_buscos.tar.gz",
             "db_dir": "busco_db",
             "output_suffix": ".busco.results"
         },
 
         "hmmscan": {
-            "n_threads": 8
+            "n_threads": 1
         },
 
         "khmer": {
             "normalize": {
                 "single": { 
                     "ksize": 25,
-                    "table_size": 2e9,
+                    "table_size": 1e8,
                     "n_tables": 4,
                     "coverage": 20
                 }, 
 
                 "pooled": {
                     "ksize": 25,
-                    "table_size": 8e9,
+                    "table_size": 4e8,
                     "n_tables": 4,
                     "coverage": 20 
                 }
@@ -66,7 +66,7 @@
         },
     
         "transdecoder": {
-            "n_threads": 8,
+            "n_threads": 1,
             "min_prot_len": 80,
             "orf_cutoff": 600
         }
