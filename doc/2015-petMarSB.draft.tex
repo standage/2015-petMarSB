@@ -64,7 +64,37 @@ Section should include information on sea lamprey sample prep where available, t
 
 \section*{Analyses}
 
-\subsection*{Assembly}
+\subsection*{many-sample de novo assembly}
+
+Here we describe basic assembly statistics:
+
+\begin{enumerate}
+
+\item 
+
+\end{enumerate}
+
+\subsection*{lamprey de novo assembly improves recall over ab inition predictions}
+
+This subsection has two goals: show that our assembly is reasonably valid, and show that it has better recall than lamp00.
+Though these two goals could ostensibly be split into two subsections, they have considerable overlap and mostly are shown by the same results. We make our case
+through the following points:
+
+\begin{enumerate}
+\item Our assembly has good recall of existing genes in lamp00. We show that we cover lamp00 by homology (blast lamp10 against lamp00), that we cover the gene products of lamp00 through annotation, and that we cover the GTF gene annotations on the genome.
+\item Our assembly has good recall of core vertebrate orthologs. Here we present BUSCO results, both for lamp00 and lamp10.
+\item Our assembly extends existing genes. Can be extracted from homology with lamp00 and TransDecoder results.
+\item Our assembly includes novel genes. We show this by filtering out transcripts with homology to the lamprey genome or transcriptome, and finding orthologies (recipricol best hits) for those that remain. We do another level of filtering for false positives with the mygene API.
+\item Our assembly has already proven useful to lamprey researchers \cite{ren_genome-wide_2015}.
+\end{enumerate}
+
+Discussion point: do we split this into two sections?
+
+\subsection*{Improved recall discovers potential ancestral vertebrate genes}
+
+Here we talk about the genes we have shown to potentially be ancestral vertebrate orthologs. This is at least a useful result in its own right, but it would be
+nice to find something more compelling here. Immune-related genes might be a good starting point.
+
 
 %The assembly was produced using the Trinity assembler \cite{haas_novo_2013} after pre-processing with an in-house pipeline, described further in the methods.
 

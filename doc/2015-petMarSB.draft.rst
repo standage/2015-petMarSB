@@ -35,8 +35,51 @@ accessions.
 Analyses
 ========
 
-Assembly
---------
+many-sample de novo assembly
+----------------------------
+
+Here we describe basic assembly statistics:
+
+#. 
+
+lamprey de novo assembly improves recall over ab inition predictions
+--------------------------------------------------------------------
+
+This subsection has two goals: show that our assembly is reasonably
+valid, and show that it has better recall than lamp00. Though these two
+goals could ostensibly be split into two subsections, they have
+considerable overlap and mostly are shown by the same results. We make
+our case through the following points:
+
+#. Our assembly has good recall of existing genes in lamp00. We show
+   that we cover lamp00 by homology (blast lamp10 against lamp00), that
+   we cover the gene products of lamp00 through annotation, and that we
+   cover the GTF gene annotations on the genome.
+
+#. Our assembly has good recall of core vertebrate orthologs. Here we
+   present BUSCO results, both for lamp00 and lamp10.
+
+#. Our assembly extends existing genes. Can be extracted from homology
+   with lamp00 and TransDecoder results.
+
+#. Our assembly includes novel genes. We show this by filtering out
+   transcripts with homology to the lamprey genome or transcriptome, and
+   finding orthologies (recipricol best hits) for those that remain. We
+   do another level of filtering for false positives with the mygene
+   API.
+
+#. Our assembly has already proven useful to lamprey researchers
+   :raw-latex:`\cite{ren_genome-wide_2015}`.
+
+Discussion point: do we split this into two sections?
+
+Improved recall discovers potential ancestral vertebrate genes
+--------------------------------------------------------------
+
+Here we talk about the genes we have shown to potentially be ancestral
+vertebrate orthologs. This is at least a useful result in its own right,
+but it would be nice to find something more compelling here.
+Immune-related genes might be a good starting point.
 
 We find 73.93% of annotations to be covered by a transcript from lamp10.
 Breaking down this percentage by feature type reveals that the results
