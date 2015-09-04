@@ -5,6 +5,52 @@ import argparse
 from annotate import *
 from tasks import *
 
+from doit.cmd_base import TaskLoader
+from doit.doit_cmd import DoitMain
+
+def run_tasks(tasks, args, config={'verbosity': 2}):
+    
+    if type(tasks) is not list:
+        raise TypeError('tasks must be a list')
+   
+    class Loader(TaskLoader):
+        @staticmethod
+        def load_tasks(cmd, opt_values, pos_args):
+            return tasks, config
+   
+    DoitMain(Loader()).run(args)
+
+def get_database_prep_tasks(resources_df):
+    '''
+    Database prep, homology search
+    
+    First, we get remote flat files.
+    '''
+    tasks = []
+    for key, row in resources_df[resources_df.access == 'remote_file'].iterrows():
+        tasks.append(download_and_gunzip_task(row.url, row.filename))
+
+    
+    # Programmatically query uniprot
+    for key, row in  resources_df[(resources_df.access == 'remote_query') & \
+                                  (resources_df.q_type == 'uniprot')].iterrows():
+   
+        tasks.append(uniprot_query_task(row.terms, row.filename, label=row.filename))
+
+    # Prep HMM profiles
+    for key, row in resources_df[resources_df.meta_type == 'hmm_profiles'].iterrows():
+        tasks.append(hmmpress_task(row.filename))
+
+    # Truncate the long fasta names so blast doesn't choke
+    for key, row in resources_df[resources_df.meta_type == 'fasta_database'].iterrows():
+        tasks.append(truncate_fasta_header_task(row.filename))
+
+    # Generate blast indices
+    for key, row in resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].iterrows():
+        tasks.append(blast_format_task(row.filename, row.filename + '.db', row.db_type))
+
+    return tasks
+
 def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
     
     tasks = []
@@ -25,9 +71,10 @@ def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
     '''
     Now we generate the align and eXpress tasks for each sample
     '''
+    express_files = []
     for key, row in sample_df.iterrows():
         target_fn = '{sample}.x.{idx}'.format(sample=row.filename, idx=bt2_db_basename)
-        encoding = row.encoding
+        encoding = row.phred
         sample_fn = row.filename
         bowtie2_align_cfg = config['pipeline']['bowtie2_build']
 
@@ -53,52 +100,88 @@ def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
         tasks.append(express_task)
 
         # Get the eXpress results file
-        express_results = os.path.join(express_dir, 'results.xprs')
-        # Aggregate them
-        agg_task = aggregate_express_task(express_files,
-                                          '{pref}.eXpress.tpm.tsv'.format(pref=assembly_fn),
-                                          '{pref}.eXpress.eff.tsv'.format(pref=assembly_fn),
-                                          '{pref}.eXpress.tot.tsv'.format(pref=assembly_fn))
-        tasks.append(agg_task)
+        express_files.append(os.path.join(express_dir, 'results.xprs'))
+
+    # Aggregate them
+    agg_task = aggregate_express_task(express_files,
+                                      '{pref}.eXpress.tpm.tsv'.format(pref=assembly_fn),
+                                      '{pref}.eXpress.eff.tsv'.format(pref=assembly_fn),
+                                      '{pref}.eXpress.tot.tsv'.format(pref=assembly_fn))
+    tasks.append(agg_task)
     
     return tasks
 
 def get_sample_prep_tasks(sample_df, config, data_dir):
     tasks = []
-    '''
-    First, we link all the files into the current directory.
-    '''
-    for key, row in sample_df.iterrows():
-        tasks.append(link_file_task(os.path.join(data_dir, row.filename)))
-
     
+    # This list will track the files output by the first pass of digital normalization
+    dg_files = []
+    for key, row in sample_df.iterrows():
+        # First, link all samples into the current directory
+        tasks.append(link_file_task(os.path.join(data_dir, row.filename)))
+        # Actions are different for paired and unpaired samples; paired files,
+        # quite annoyingly, have to be split for Trimmomatic, then re-interleaved
+        # for digital normalization
+        if row.paired:
+            # Split the paired file
+            split_task = split_pairs_task(row.filename)
+            tasks.append(split_task)
 
-    # Run diginorm in parallel on all samples
-    ksize = config['pipeline']['khmer']['ksize']
-    htsize = config['pipeline']['khmer']['parallel']['table_size']
-    ntables = config['pipeline']['khmer']['parallel']['n_tables']
-    coverage = config['pipeline']['khmer']['parallel']['coverage']
-    dg_tasks = sample_df.apply(
-                        lambda row: diginorm_task([row.filename], ksize,
-                            htsize, coverage, ntables), axis=1, reduce=False)
-    tasks.extend(list(dg_tasks))
-    tasks.append(group_task('normalize-pass-1', [t.name for t in dg_tasks]))
-    dg_outputs = sample_df.filename.apply(lambda fn: fn+'.keep')
+            # Get the trim config and create Trimmomatic tasks for pe and orphans
+            trim_cfg = config['pipeline']['trimmomatic']
+            left_fn = row.filename + '.1'
+            right_fn = row.filename + '.2'
+            orphan_fn = row.filename + '.0'
+            trim_pe_task = trimmomatic_pe_task(left_fn, right_fn, 
+                                               left_fn + '.pe.trim', left_fn + '.se.trim',
+                                               right_fn + '.pe.trim', right_fn + '.se.trim',
+                                               row.phred, trim_cfg)
+            trim_se_task = trimmomatic_se_task(orphan_fn, orphan_fn + '.trim',
+                                               row.phred, trim_cfg)
+            tasks.extend([trim_se_task, trim_pe_task])
 
-    htsize = config['pipeline']['khmer']['pooled']['table_size']
-    ntables = config['pipeline']['khmer']['pooled']['n_tables']
-    coverage = config['pipeline']['khmer']['pooled']['coverage']
-    ht_fn = config['pipeline']['prefix'] + '.pooled.ct'
-    dg_task = diginorm_task(list(dg_outputs), ksize, htsize, coverage,
-                            n_tables=ntables, ht_outfn=ht_fn)
+            # Combine the original orphans and those created by Trimmomatic
+            cat_se_task = cat_task([left_fn + '.se.trim', right_fn + '.se.trim', orphan_fn + '.trim'],
+                                row.filename + '.qc.se.fq')
+            tasks.append(cat_se_task)
+            # Interleave the split-paired samples
+            ilv_task = interleave_task(left_fn + '.pe.trim', right_fn + '.pe.trim',
+                                              row.filename + '.qc.pe.fq')
+            tasks.append(ilv_task)
+            # Run digital normalization on paired and orphaned reads together
+            dg_cfg = config['pipeline']['khmer']['normalize']['single']
+            dg_task = diginorm_task([row.filename + '.qc.pe.fq', row.filename + '.qc.se.fq'],
+                                    dg_cfg, row.filename + '.qc.fq.keep')
+            tasks.append(dg_task)
+            dg_files.extend([row.filename + '.qc.pe.fq.keep', row.filename + '.qc.se.fq.keep'])
+        else:
+            # Get trim config and build the Trimmomatic task for it
+            trim_cfg = config['pipeline']['trimmomatic']
+            trim_se_task = trimmomatic_se_task(row.filename, row.filename + '.qc.fq',
+                                               row.phred, trim_cfg)
+            tasks.append(trim_se_task)
+
+            # Build the digital normalization task
+            dg_cfg = config['pipeline']['khmer']['normalize']['single']
+            dg_task = diginorm_task([row.filename + '.qc.fq'], dg_cfg,
+                                    row.filename + '.qc.fq.keep')
+            tasks.append(dg_task)
+            dg_files.append(row.filename + '.qc.fq.keep')
+            
+    # Now run the pooled second pass of digital normalization
+    dg_cfg = config['pipeline']['khmer']['normalize']['pooled']
+    ct_fn = config['pipeline']['prefix'] + '.all-samples.pooled.ct'
+    dg_label = config['pipeline']['prefix'] + '_all-samples_pooled'
+    dg_task = diginorm_task(dg_files, dg_cfg, dg_label, ct_outfn=ct_fn)
     tasks.append(dg_task)
-    tasks.append(group_task('normalize-pass-2', [dg_task.name]))
-    dg_outputs = dg_outputs.apply(lambda fn: fn+'.keep')
 
-    minabund = config['pipeline']['khmer']['parallel']['min_abund']
-    abf_task = filter_abund_task(list(dg_outputs), ht_fn, minabund, coverage)
-    tasks.append(group_task('filter-abund', [abf_task.name]))
-    tasks.append(abf_task)
+    # Finally, the filter-abund task
+    fab_cfg = config['pipeline']['khmer']['filter-abund']
+    fab_label = config['pipeline']['prefix'] + '_all-samples_pooled'
+    fab_task = filter_abund_task([fn + '.keep' for fn in dg_files], ct_fn, fab_cfg, fab_label)
+    tasks.append(fab_task)
+
+    return tasks
 
 
 def main():
@@ -149,60 +232,19 @@ def main():
         print('** Current Working Directory: {w}'.format(w=os.getcwd()), file=sys.stderr)
 
         tasks = []
-
         '''
         Sample preprocessing
         '''
+        sample_prep_tasks = get_sample_prep_tasks(sample_df, config, local_dir)
+        tasks.extend(sample_prep_tasks)
+        tasks.append(group_task('preprocess', [t.name for t in sample_prep_tasks]))
 
- 
-        tasks.append(group_task('preprocess', ['link-samples', 'normalize-pass-1', 'normalize-pass-2', 'filter-abund']))
         '''
-        Database prep, homology search
+        Reference database prep
         '''
-        # Use curl to get remote flat files
-        remote_files = resources_df[resources_df.access == 'remote_file']
-        curl_tasks = list(remote_files.apply(lambda row: curl_task(row),
-                                        axis=1, reduce=False))
-        tasks.extend(curl_tasks)
-
-        # Programmatically query uniprot
-        uniprot_queries = resources_df[(resources_df.access == 'remote_query') & \
-                                       (resources_df.q_type == 'uniprot')]
-        uniprot_tasks = list(uniprot_queries.apply(lambda row: dict_to_task(
-                                task_funcs.uniprot_query_task(
-                                                        row.terms,
-                                                        row.filename+'.gz')
-                                ), axis=1, reduce=False))
-        tasks.extend(uniprot_tasks)
-
-        # unpack gzip'd remote flat files and queries
-        gunzip_df = resources_df[(resources_df.access == 'remote_query') |
-                                 (resources_df.access == 'remote_file')]
-        gunzip_tasks = [dict_to_task(tsk) for tsk in
-                      GunzipTask([(row.filename+'.gz', row.filename) for
-                                   _, row in gunzip_df.iterrows()]).tasks()]
-        tasks.extend(gunzip_tasks)
-
-        hmmpress_tasks = [hmmpress_task(row.filename) for _, row in \
-                   resources_df[resources_df.meta_type == 'hmm_profiles'].iterrows()]
-        tasks.extend(hmmpress_tasks)
-
-        # Truncate the long fasta names so blast doesn't choke
-        truncate_tasks = list(gunzip_df[gunzip_df.meta_type == 'fasta_database'].apply(
-                        lambda row: dict_to_task(task_funcs.truncate_fasta_header_task(row.filename)),
-                        axis=1, reduce=False))
-        tasks.extend(truncate_tasks)
-
-        # Generate blast indices
-        makeblastdb_tasks = list(resources_df[resources_df.meta_type.isin(['fasta_database', 'assembly'])].apply(
-                        lambda row: dict_to_task(task_funcs.blast_format_task(
-                            row.filename, row.filename+'.db', row.db_type)),
-                            axis=1, reduce=False))
-        tasks.extend(makeblastdb_tasks)
-
-        tasks.append(group_task('databases', [t.name for t in curl_tasks + uniprot_tasks + \
-                                              gunzip_tasks + truncate_tasks + \
-                                              makeblastdb_tasks + hmmpress_tasks]))
+        db_prep_tasks = get_database_prep_tasks(resources_df)
+        tasks.extend(db_prep_tasks)
+        tasks.append(group_task('databases', [t.name for t in db_prep_tasks]))
 
         # Run blast
         blast_iters = []
@@ -255,7 +297,7 @@ def main():
         tasks.extend(busco_tasks)
         tasks.append(group_task('busco', [t.name for t in busco_tasks]))
 
-        abundance_tasks = get_abundance_estimation(assembly_fn, sample_df, config)
+        abundance_tasks = get_abundance_estimation_tasks(assembly_fn, sample_df, config)
         tasks.extend(abundance_tasks)
         tasks.append(group_task('abundance', [t.name for t in abundance_tasks]))
 
@@ -277,7 +319,7 @@ def main():
                 pprint.pprint(task.__dict__)
 
         if doit_args:
-            task_funcs.run_tasks(tasks, doit_args)
+            run_tasks(tasks, doit_args)
 
     finally:
         os.chdir(old_dir)

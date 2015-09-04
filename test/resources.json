@@ -3,7 +3,7 @@
         "access": "local_file",
         "condition": "m_sperm",
         "db_type": "nucl",
-        "filename": "Muscle.fq.gz",
+        "filename": "Muscle.test.fq.gz",
         "flowcell": "42UL4",
         "label": "muscle_m_sperm_42UL4",
         "meta_type": "sample",
@@ -16,7 +16,7 @@
         "access": "local_file",
         "condition": "",
         "db_type": "nucl",
-        "filename": "Neutrophils.fq.gz",
+        "filename": "Neutrophils.test.fq.gz",
         "flowcell": "61504",
         "label": "neutrophils_61504",
         "meta_type": "sample",
@@ -29,7 +29,7 @@
         "access": "local_file",
         "condition": "",
         "db_type": "nucl",
-        "filename": "brain_paired.qc.fq.gz",
+        "filename": "brain_paired.test.qc.fq.gz",
         "flowcell": "30M2H",
         "label": "brain_30M2H",
         "meta_type": "sample",
@@ -111,5 +111,5 @@
         "filename": "petMar2.pep.fa",
         "meta_type": "fasta_database",
         "url": "ftp://ftp.ensembl.org/pub/release-75/fasta/petromyzon_marinus/pep/Petromyzon_marinus.Pmarinus_7.0.75.pep.all.fa.gz"
-    },
+    }
 }

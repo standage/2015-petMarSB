@@ -1,25 +1,27 @@
 n_threads=4
 
-environment:
+environment: FORCE
 	conda env export --file environment.conda
 
-list:
+list: FORCE
 	./pipeline list --resources-metadata resources.json --config-metadata config.json
 
-print-tasks:
+print-tasks: FORCE
 	./pipeline --print-tasks --resources-metadata resources.json --config-metadata config.json
 
-busco:
+busco: FORCE
 	./pipeline busco --resources-metadata resources.json --config-metadata config.json
 
-blast:
+blast: FORCE
 	./pipeline blast --resources-metadata resources.json --config-metadata config.json
 
-databases:
+databases: FORCE
 	./pipeline databases --resources-metadata resources.json --config-metadata config.json
 
-test:
+test: FORCE
 	./pipeline run --resources-metadata test/resources.json --config-metadata test/config.json --local-file-dir test/ --assembly-file lamp-test.fasta
 
-clean:
+clean: FORCE
 	./pipeline clean --resources-metadata resources.json --config-metadata config.json
+
+FORCE:

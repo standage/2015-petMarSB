@@ -7,16 +7,18 @@ import os
 import pprint
 import re
 from shutil import rmtree
+import shutil
 import sys
 
 from doit.tools import run_once, create_folder, title_with_actions
 from doit.task import clean_targets, dict_to_task
+
+from bioservices import UniProt
 import jinja2
 import pandas as pd
+import screed
 
-from peasoup import task_funcs
-from peasoup.tasks import BlastTask, BlastFormatTask, CurlTask, GunzipTask, \
-                            UniProtQueryTask, TruncateFastaNameTask
+from peasoup.tasks import BlastTask
 
 def clean_folder(target):
     try:
@@ -39,67 +41,125 @@ def create_task_object(task_dict_func):
     return d_to_t
 
 @create_task_object
-def diginorm_task(input_files, ksize, htsize, cutoff,
-                  n_tables=4, ht_outfn=None, label=None):
+def diginorm_task(input_files, dg_cfg, label, ct_outfn=None):
 
-    if not label:
-        label = 'normalize_by_median_'
-        label += '_'.join(input_files[:5])
-        if len(input_files) > 5:
-            label += '_and_' + str(len(input_files) - 5) + '_more'
+    ksize = dg_cfg['ksize']
+    table_size = dg_cfg['table_size']
+    n_tables = dg_cfg['n_tables']
+    coverage = dg_cfg['coverage']
 
-    if len(input_files) == 1:
-        report_fn = input_files[0] + '.keep.report.txt'
-    else:
-        report_fn = label + '.report.txt'
+    name = 'normalize_by_median_' + label
+    report_fn = label + '.report.txt'
 
     inputs = ' '.join(input_files)
-    ht_out_str = ''
-    if ht_outfn is not None:
-        ht_out_str = '-s ' + ht_outfn
-    cmd = 'normalize-by-median.py -k {ksize} -x {htsize} -N {n_tables} '\
-          '-C {cutoff} -R {report_fn} {ht_out_str} {inputs}'.format(**locals())
+    ct_out_str = ''
+    if ct_outfn is not None:
+        ct_out_str = '-s ' + ct_outfn
+
+    cmd = 'normalize-by-median.py -f -k {ksize} -x {table_size} -N {n_tables} '\
+          '-C {coverage} -R {report_fn} {ct_out_str} {inputs}'.format(**locals())
 
     targets = [fn + '.keep' for fn in input_files]
     targets.append(report_fn)
-    if ht_out_str:
-        targets.append(ht_outfn)
+    if ct_out_str:
+        targets.append(ct_outfn)
 
     return {'title': title_with_actions,
-            'name': label,
+            'name': name,
             'actions': [cmd],
             'file_dep': input_files,
             'targets': targets,
             'clean': [clean_targets]}
 
 @create_task_object
-def filter_abund_task(input_files, ct_file, minabund, coverage, label=None):
+def filter_abund_task(input_files, ct_file, fab_cfg, label):
 
-    if not label:
-        label = 'filter_abund_'
-        label += '_'.join(input_files[:5])
-        if len(input_files) > 5:
-            label += '_and_' + str(len(input_files) - 5) + '_more'
+    name = 'filter_abund_' + label
+    
+    min_abund = fab_cfg['min_abund']
+    coverage = fab_cfg['coverage']
 
     inputs = ' '.join(input_files)
-    cmd = 'filter-abund.py -C {minabund} -V -Z {coverage} '\
+    cmd = 'filter-abund.py -C {min_abund} -V -Z {coverage} '\
           '{ct_file} {inputs}'.format(**locals())
 
     targets = [fn + '.abundfilt' for fn in input_files]
 
     return {'title': title_with_actions,
-            'name': label,
+            'name': name,
             'actions': [cmd],
             'file_dep': input_files + [ct_file],
             'targets': targets,
             'clean': [clean_targets]}
 
 @create_task_object
-def curl_task(row):
-    cmd = 'curl -o {target_fn} {url}'.format(target_fn=row.filename+'.gz', url=row.url)
-    tsk = task_funcs.general_cmdline_task([], [row.filename+'.gz'], cmd)
-    tsk['uptodate'] = [run_once]
-    return tsk
+def download_and_gunzip_task(url, target_fn):
+    cmd = 'curl {url} | gunzip -c > {target_fn}'.format(**locals())
+
+    return {'title': title_with_actions,
+            'name': 'download_gunzip_' + target_fn,
+            'actions': [cmd],
+            'targets': [target_fn],
+            'clean': [clean_targets],
+            'uptodate': [run_once]}
+
+@create_task_object
+def download_and_untar_task(url, target_dir, label=''):
+
+    cmd = 'mkdir {target_dir}; curl {url} | tar -xz -C {target_dir}'.format(**locals())
+
+    if not label:
+        label = 'download_untar_' + target_dir.strip('/')
+
+    return {'name': label,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [target_dir],
+            'clean': [(clean_folder, [target_dir])],
+            'uptodate': [run_once]}
+
+@create_task_object
+def uniprot_query_task(query, target_fn, fmt='fasta', label=''):
+
+    def func():
+        u = UniProt()
+        res = u.search(query, frmt=fmt)
+        with open(target_fn, 'wb') as fp:
+            fp.write(res)
+
+    if not label:
+        label = query
+    name = 'uniprot_query_' + label
+
+    return {'name': name,
+            'title': title_with_actions,
+            'actions': [(func, [])],
+            'targets': [target_fn],
+            'clean': [clean_targets],
+            'uptodate': [run_once] }
+
+@create_task_object
+def truncate_fasta_header_task(fasta_fn, length=500):
+    
+    def func():
+        tmp_fn = fasta_fn + '.tmp'
+        with open(tmp_fn, 'wb') as fp:
+            for r in screed.open(fasta_fn):
+                try:
+                    name = r.name.split()[0]
+                except IndexError:
+                    name = r.name[:length]
+                fp.write('>{}\n{}\n'.format(name, r.sequence))
+
+        shutil.move(tmp_fn, fasta_fn)
+    
+    name = 'truncate_fasta_header_{fasta_fn}'.format(**locals())
+
+    return {'name': name,
+            'title': title_with_actions,
+            'actions': [(func, [])],
+            'file_dep': [fasta_fn],
+            'uptodate': [run_once]}
 
 @create_task_object
 def create_folder_task(folder, label=''):
@@ -114,8 +174,30 @@ def create_folder_task(folder, label=''):
             'uptodate': [run_once],
             'clean': [clean_targets] }
 
-def blast_task(row, config, assembly):
+@create_task_object
+def blast_format_task(db_fn, db_out_fn, db_type):
+    assert db_type in ['nucl', 'prot']
 
+    cmd = 'makeblastdb -in {db_fn} -dbtype {db_type} -out {db_out_fn}'.format(**locals())
+
+    target_fn = ''
+    if db_type == 'nucl':
+        target_fn = db_out_fn + '.nhr'
+    else:
+        target_fn = db_out_fn + '.phr'
+
+    name = 'makeblastdb_{db_out_fn}'.format(**locals())
+
+    return {'name': name,
+            'title': title_with_actions,
+            'actions': [cmd, 'touch '+db_out_fn],
+            'targets': [target_fn, db_out_fn],
+            'file_dep': [db_fn],
+            'clean': [clean_targets, 'rm -f {target_fn}.*'.format(**locals())] }
+
+def blast_task(row, config, assembly):
+    ''' TODO: Remove peasoup usage
+    '''
     blast_threads = config['pipeline']['blast']['threads']
     blast_params = config['pipeline']['blast']['params']
     blast_evalue = config['pipeline']['blast']['evalue']
@@ -153,15 +235,34 @@ def link_file_task(src):
             'uptodate': [run_once],
             'clean': [clean_targets]}
 
-@create_task_boject
+
+@create_task_object
+def split_pairs_task(pe_reads_fn):
+
+    left_fn = pe_reads_fn + '.1'
+    right_fn = pe_reads_fn + '.2'
+    orphan_fn = pe_reads_fn + '.0'
+    cmd = 'split-paired-reads.py {pe_reads_fn} -1 {left_fn} -2 {right_fn} -0 {orphan_fn}'.format(**locals())
+
+    name = 'split_paired_' + pe_reads_fn
+
+    return {'name': name,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [left_fn, right_fn, orphan_fn],
+            'file_dep': [pe_reads_fn],
+            'clean': [clean_targets] }
+
+@create_task_object
 def bowtie2_build_task(input_fn, db_basename, bowtie2_cfg):
 
     extra_args = bowtie2_cfg['extra_args']
-    cmd = 'bowtie2-build {extra_args} {input_fn} {target_basename_fn}'.format(**locals())
+    cmd = 'bowtie2-build {extra_args} {input_fn} {db_basename}'.format(**locals())
     
     targets = [db_basename+ext for ext in \
                 ['.1.bt2', '.2.bt2', '.3.bt2', '.4.bt2', '.rev.1.bt2', '.rev.2.bt2']]
-    targets.append(target_basename_fn)
+    targets.append(db_basename)
+
     name = 'bowtie2_build_{db_basename}'.format(**locals())
     return {'title': title_with_actions,
             'name': db_basename,
@@ -171,10 +272,6 @@ def bowtie2_build_task(input_fn, db_basename, bowtie2_cfg):
             'clean': [clean_targets] }
 
 @create_task_object
-def split_pairs_task(row):
-    return task_funcs.split_pairs_task(row.filename)
-
-
 def bowtie2_align_task(db_basename, target_fn, bowtie2_cfg, left_fn='', right_fn='', singleton_fn='',
                         read_fmt='-q', samtools_convert=True,
                         encoding='phred33'):
@@ -186,12 +283,12 @@ def bowtie2_align_task(db_basename, target_fn, bowtie2_cfg, left_fn='', right_fn
         assert (left_fn and right_fn)
     n_threads = bowtie2_cfg['n_threads']
     extra_args = bowtie2_cfg['extra_args']
-    cmd = 'bowtie2 -p {n_threads} {extra_args} {encoding} {read_fmt} -x {index_basename_fn} '.format(**locals())
+    cmd = 'bowtie2 -p {n_threads} {extra_args} {encoding} {read_fmt} -x {db_basename} '.format(**locals())
     
-    file_dep = [index_basename_fn]
+    file_dep = [db_basename]
     targets = []
 
-    name = 'bowtie2_align' + ''.join('+' + fn if fn else fn for fn in [left_fn, right_fn, singleton_fn, index_basename_fn])
+    name = 'bowtie2_align' + ''.join('+' + fn if fn else fn for fn in [left_fn, right_fn, singleton_fn, db_basename])
 
     if left_fn:
         file_dep.extend([left_fn, right_fn])
@@ -328,9 +425,9 @@ def trimmomatic_pe_task(left_in, right_in, left_paired_out, left_unpaired_out,
             'clean': [clean_targets]}
 
 @create_task_object
-def trimmomatic_se_task(sample_fn, output_fn. encoding, trim_cfg):
+def trimmomatic_se_task(sample_fn, output_fn, encoding, trim_cfg):
     assert encoding in ['phred33', 'phred64']
-    name = 'TrimmomaticSE_' + left_in + '_' + right_in
+    name = 'TrimmomaticSE_' + sample_fn
 
     params = trim_cfg['params']
     n_threads = trim_cfg['n_threads']
@@ -359,7 +456,7 @@ def interleave_task(left_in, right_in, out_fn, label=''):
             'targets': [out_fn],
             'clean': [clean_targets]}
 
-@task_funcs.create_task_object
+@create_task_object
 def cat_task(file_list, target_fn):
 
     cmd = 'cat {files} > {t}'.format(files=' '.join(file_list), t=target_fn)
@@ -376,21 +473,6 @@ def group_task(group_name, task_names):
     return {'name': group_name,
             'actions': None,
             'task_dep': task_names}
-
-@create_task_object
-def download_and_untar_task(url, target_dir, label=''):
-
-    cmd = 'mkdir {target_dir}; curl {url} | tar -xz -C {target_dir}'.format(**locals())
-
-    if not label:
-        label = 'dl_untar_' + target_dir.strip('/')
-
-    return {'name': label,
-            'title': title_with_actions,
-            'actions': [cmd],
-            'targets': [target_dir],
-            'clean': [(clean_folder, [target_dir])],
-            'uptodate': [run_once]}
 
 # python3 BUSCO_v1.1b1/BUSCO_v1.1b1.py -in petMar2.cdna.fa -o petMar2.cdna.busco.test -l vertebrata/ -m trans -c 4
 @create_task_object
