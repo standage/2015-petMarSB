@@ -79,7 +79,7 @@ Also includes accessions.
 
 [Table 1, samples]
 
-\section*{Analyses}
+\section*{Results}
 
 \subsection*{Many-sample de Novo Assembly}
 
@@ -116,6 +116,11 @@ that remain. We do another level of filtering for false positives with the mygen
 \end{enumerate}
 
 Discussion point: do we split this into two sections?
+
+% @ctb comments: consider dividing these results into 3 subsections:
+% 1) Validation from genome
+% 2) Validation from predicted transcripts (lamp00)
+% 3) Validation from ortho/homologs
 
 We find <% print '{:.2f}\%'.format(data['lamp10_prop'] * 100.0) %> of annotations to be covered by a
 transcript from lamp10. Breaking down this percentage by feature type reveals that the results are 
@@ -189,8 +194,7 @@ by homology to a known protein. \% of transcript alignments are entirely contain
 
 Here we talk about the genes we have shown to potentially be ancestral vertebrate orthologs. This is
 at least a useful result in its own right, but it would be nice to find something more compelling
-here. Immune-related genes might be a good starting point.
-
+here. Immune-related genes might be a good starting point. 
 
 %The assembly was produced using the Trinity assembler \cite{haas_novo_2013} after pre-processing with an in-house pipeline, described further in the methods.
 
