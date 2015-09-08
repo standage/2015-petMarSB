@@ -286,13 +286,21 @@ def main():
 
         busco_cfg = config['pipeline']['busco']
         busco_tasks = []
-        busco_db_task = download_and_untar_task(busco_cfg['vert_url'], busco_cfg['db_dir'])
-        busco_tasks.append(busco_db_task)
+        busco_vert_db_task = download_and_untar_task(busco_cfg['vert_url'], 
+                                                     busco_cfg['db_dir'],
+                                                     label='vertebrata')
+        busco_metz_db_task = download_and_untar_task(busco_cfg['metazoa_url'],
+                                                     busco_cfg['db_dir'],
+                                                     label='metazoa')
+        busco_tasks.append(busco_vert_db_task)
+        busco_tasks.append(busco_metz_db_task)
 
-        busco_output_dir = assembly_fn + busco_cfg['output_suffix']
-        busco_tasks.append(busco_task(assembly_fn, busco_output_dir, 
-                           os.path.join(busco_cfg['db_dir'], 'vertebrata'),
-                           'trans', busco_cfg))
+        for fn in [assembly_fn, resources_df.ix['petMar2_cdna'].filename]:
+            for db in ['metazoa', 'vertebrata']:
+                output_dir = '.'.join([fn, db, busco_cfg['output_suffix']])
+                busco_tasks.append(busco_task(fn, output_dir, 
+                                   os.path.join(busco_cfg['db_dir'], db), 
+                                   'trans', busco_cfg))
 
         tasks.extend(busco_tasks)
         tasks.append(group_task('busco', [t.name for t in busco_tasks]))

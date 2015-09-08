@@ -93,11 +93,13 @@ def filter_abund_task(input_files, ct_file, fab_cfg, label):
             'clean': [clean_targets]}
 
 @create_task_object
-def download_and_gunzip_task(url, target_fn):
+def download_and_gunzip_task(url, target_fn, label=''):
     cmd = 'curl {url} | gunzip -c > {target_fn}'.format(**locals())
 
+    name = '_'.join(['download_gunzip', target_fn, label])
+
     return {'title': title_with_actions,
-            'name': 'download_gunzip_' + target_fn,
+            'name': name,
             'actions': [cmd],
             'targets': [target_fn],
             'clean': [clean_targets],
@@ -106,15 +108,15 @@ def download_and_gunzip_task(url, target_fn):
 @create_task_object
 def download_and_untar_task(url, target_dir, label=''):
 
-    cmd = 'mkdir {target_dir}; curl {url} | tar -xz -C {target_dir}'.format(**locals())
+    cmd1 = 'mkdir -p {target_dir}; curl {url} | tar -xz -C {target_dir}'.format(**locals())
+    name = '_'.join(['download_untar', target_dir.strip('/'), label])
+    done = name + '.done'
+    cmd2 = 'touch {name}'.format(name=name)
 
-    if not label:
-        label = 'download_untar_' + target_dir.strip('/')
-
-    return {'name': label,
+    return {'name': name,
             'title': title_with_actions,
-            'actions': [cmd],
-            'targets': [target_dir],
+            'actions': [cmd1, cmd2],
+            'targets': [done],
             'clean': [(clean_folder, [target_dir])],
             'uptodate': [run_once]}
 
@@ -478,8 +480,7 @@ def group_task(group_name, task_names):
 @create_task_object
 def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg, label=''):
     
-    if not label:
-        label = 'busco_' + input_filename
+    name = '_'.join(['busco', input_filename, os.path.basename(busco_db_dir), label])
 
     assert input_type in ['genome', 'OGS', 'trans']
     n_threads = busco_cfg['n_threads']
@@ -489,7 +490,7 @@ def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg, 
             busco_path=busco_path, in_fn=input_filename, out_dir=output_dir, db_dir=busco_db_dir, 
             in_type=input_type, n_threads=n_threads)
 
-    return {'name': label,
+    return {'name': name,
             'title': title_with_actions,
             'actions': [cmd],
             'targets': [output_dir],

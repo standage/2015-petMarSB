@@ -1124,6 +1124,15 @@
         "q_type": "uniprot",
         "terms": "organism:7739+AND+keyword:1185"
     },
+
+    "braFlo_mrna": {
+        "access": "remote_file",
+        "db_type": "nucl",
+        "filename": "braFlo.mrna.fa",
+        "meta_type": "fasta_database",
+        "url": "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF_000003815.1_Version_2/GCF_000003815.1_Version_2_rna.fna.gz"
+    },
+
     "danRer_pep": {
         "access": "remote_file",
         "db_type": "prot",
