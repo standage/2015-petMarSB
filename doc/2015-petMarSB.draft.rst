@@ -35,8 +35,47 @@ accessions.
 Analyses
 ========
 
-Assembly
---------
+Many-sample de Novo Assembly
+----------------------------
+
+Here we describe basic assembly statistics:
+
+#. Number of transcripts, coding regions.
+
+#. Number of orthologies, homologies (broken down by genome support).
+
+#. Accuracy, completeness, contiguity (with discussion of limitations).
+
+de novo Assembly Improves Recall Over ab initio Predictions
+-----------------------------------------------------------
+
+This subsection has two goals: show that our assembly is reasonably
+valid, and show that it has better recall than lamp00. Though these two
+goals could ostensibly be split into two subsections, they have
+considerable overlap and mostly are shown by the same results. We make
+our case through the following points:
+
+#. Our assembly has good recall of existing genes in lamp00. We show
+   that we cover lamp00 by homology (blast lamp10 against lamp00), that
+   we cover the gene products of lamp00 through annotation, and that we
+   cover the GTF gene annotations on the genome.
+
+#. Our assembly has good recall of core vertebrate orthologs. Here we
+   present BUSCO results, both for lamp00 and lamp10.
+
+#. Our assembly extends existing genes. Can be extracted from homology
+   with lamp00 and TransDecoder results.
+
+#. Our assembly includes novel genes. We show this by filtering out
+   transcripts with homology to the lamprey genome or transcriptome, and
+   finding orthologies (recipricol best hits) for those that remain. We
+   do another level of filtering for false positives with the mygene
+   API.
+
+#. Our assembly has already proven useful to lamprey researchers
+   (perhaps this goes in background?)
+
+Discussion point: do we split this into two sections?
 
 We find 73.93% of annotations to be covered by a transcript from lamp10.
 Breaking down this percentage by feature type reveals that the results
@@ -93,20 +132,18 @@ their homologies and orthologies with both zebrafish and amphioxus.
 
 Futher, % of the genome is covered by annotations, while % is covered by
 alignments from lamp10; % of transcripts have any alignment to the
-genome.
-
-We also find that % of transcript alignments entirely contain an
+genome. We also find that % of transcript alignments entirely contain an
 annotation, increasing the annotation size by %. % of extensions are
 supported by homology to a known protein. % of transcript alignments are
 entirely contained by an annotation.
 
-Pooled Assembly Discovers Novel Transcripts
--------------------------------------------
+Improved recall discovers potential ancestral vertebrate genes
+--------------------------------------------------------------
 
-Many-Sample Comparison
-----------------------
-
-Include heatmaps, bar charts of unique gene content.
+Here we talk about the genes we have shown to potentially be ancestral
+vertebrate orthologs. This is at least a useful result in its own right,
+but it would be nice to find something more compelling here.
+Immune-related genes might be a good starting point.
 
 Discussion
 ==========
@@ -123,21 +160,48 @@ from the annotation and the corresponding coordinates from the
 alignments to calculate the proportion of annotated sequence overlapped,
 proportion of transcripts overlapped, and the respective proportions of
 non-overlapped sequence and transcripts. We consider an annotated region
-to be overlapped by a trancript if it is at least 90 We give particular
-attention to alignments which entirely contain annotated regions, as
-these suggest extensions to existing annotations. When these alignments
-are from transcripts with homology evidence from other species, we
-consider them to represent putative extensions [note: maybe not
-necessary to establish validity, instead just report the numbers].
-Further, alignments which are entirely contained within an annotation
-suggest either an overly aggressive prediction in the genome, or an
-incompletely assembled transcript.
+to be overlapped by a trancript if it is at least 90% covered, with at
+least 98% identity [TODO: get better justification for these cutoffs
+other than “things Camille remembers reading”].
+
+We give particular attention to alignments which entirely contain
+annotated regions, as these suggest extensions to existing annotations.
+When these alignments are from transcripts with homology evidence from
+other species, we consider them to represent putative extensions [note:
+maybe not necessary to establish validity, instead just report the
+numbers]. Further, alignments which are entirely contained within an
+annotation suggest either an overly aggressive prediction in the genome,
+or an incompletely assembled transcript.
 
 Pre-processing
 --------------
 
+Describe pipeline: Trimmomatic PE or SE; digital normalization to C=20
+on each sample (PE and orphans together for paired samples); pooled
+digital normalization C=20; filter-abund with variable coverage C=2 Z=20
+using table output from pooled digital normalization run.
+
 Trinity Assembly
 ----------------
 
+Trinity assembly using all preprocessed reads. Final version will
+probably be with default settings.
+
 Post-processing
 ---------------
+
+cd-hit-est (or vsearch) used to remove redundancy. All transcripts
+aligned with BLASTX against zebrafish, amphioxus, mouse, lamprey, and
+human protein sequences downloaded from ensembl, and with BLASTN against
+lamprey version 7.0.75 genome, CDS, mRNA, and ncRNA. TransDecoder used
+to predict CDS, and hmmer used to make predictions against Pfam-A from
+predicted proteins. bowtie2 used to align all raw reads against
+assembly, and eXpress used for abundance estimation. Orthologies
+determined using recipricol best-hits (RBH). BUSCO ran to assess recall
+of core vertebrate orthologs.
+
+Orthologs were filtered by whether they had any blastn hit to lamprey
+resources; protein IDs then queried with mygene to retreive gene symbols
+associated with each transcript, and symbols queried using the taxonomy
+tree option to determine gene membership in gnathostomata, cylcostomata,
+and cephalochordata lineages.

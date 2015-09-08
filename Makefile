@@ -1,17 +1,27 @@
 n_threads=4
-local_dir=/mnt/research/ged/camille/lamprey/2013-lamprey-data/
 
-environment:
+environment: FORCE
 	conda env export --file environment.conda
 
-list:
-	./pipeline list --resources-metadata resources.json --config-metadata config.json --local-file-dir $(local_dir)
+list: FORCE
+	./pipeline list --resources-metadata resources.json --config-metadata config.json
 
-busco:
-	./pipeline busco --resources-metadata resources.json --config-metadata config.json --local-file-dir $(local_dir)
+print-tasks: FORCE
+	./pipeline --print-tasks --resources-metadata resources.json --config-metadata config.json
 
-databases:
-	./pipeline databases --resources-metadata resources.json --config-metadata config.json --local-file-dir $(local_dir)
+busco: FORCE
+	./pipeline busco --resources-metadata resources.json --config-metadata config.json
 
-clean:
-	./pipeline clean --resources-metadata resources.json --config-metadata config.json --local-file-dir $(local_dir)
+blast: FORCE
+	./pipeline blast --resources-metadata resources.json --config-metadata config.json
+
+databases: FORCE
+	./pipeline databases --resources-metadata resources.json --config-metadata config.json
+
+test: FORCE
+	./pipeline run --resources-metadata test/resources.json --config-metadata test/config.json --local-file-dir test/ --assembly-file lamp-test.fasta
+
+clean: FORCE
+	./pipeline clean --resources-metadata resources.json --config-metadata config.json
+
+FORCE:
