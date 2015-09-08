@@ -478,22 +478,24 @@ def group_task(group_name, task_names):
 
 # python3 BUSCO_v1.1b1/BUSCO_v1.1b1.py -in petMar2.cdna.fa -o petMar2.cdna.busco.test -l vertebrata/ -m trans -c 4
 @create_task_object
-def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg, label=''):
+def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg):
     
-    name = '_'.join(['busco', input_filename, os.path.basename(busco_db_dir), label])
+    name = '_'.join(['busco', input_filename, os.path.basename(busco_db_dir)])
 
     assert input_type in ['genome', 'OGS', 'trans']
     n_threads = busco_cfg['n_threads']
     busco_path = busco_cfg['path']
 
-    cmd = 'python3 {busco_path} -in {in_fn} -o {out_dir} -l {db_dir} -m {in_type} -c {n_threads}'.format(
-            busco_path=busco_path, in_fn=input_filename, out_dir=output_dir, db_dir=busco_db_dir, 
+    cmd = 'python3 {busco_path} -in {in_fn} -o {out_dir} -l {db_dir} '\
+            '-m {in_type} -c {n_threads}'.format(busco_path=busco_path, 
+            in_fn=input_filename, out_dir=output_dir, db_dir=busco_db_dir, 
             in_type=input_type, n_threads=n_threads)
 
     return {'name': name,
             'title': title_with_actions,
             'actions': [cmd],
-            'targets': [output_dir],
+            'targets': ['run_' + output_dir, 
+                        os.path.join('run_' + output_dir, 'short_summary_' + output_dir.rstrip('/'))],
             'file_dep': [input_filename],
             'uptodate': [run_once],
             'clean': [(clean_folder, [output_dir])]}
