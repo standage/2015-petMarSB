@@ -33,4 +33,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     df = busco_to_df(args.busco_files)
-    df.to_latex(args.output)
+    df.to_json(args.output)
