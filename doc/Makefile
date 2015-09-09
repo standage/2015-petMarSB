@@ -13,7 +13,7 @@ all: 2015-petMarSB.draft.pdf 2015-petMarSB.draft.rst
 	mkdir -p tex_out
 	cd tex_out; ln -s ../$<
 	cd tex_out; ln -s ../$(BIBFILE)
-	cd tex_out; pdflatex $<; bibtex $<; pdflatex $<; pdflatex $<
+	cd tex_out; pdflatex `basename -s .tex $<`; bibtex `basename -s .tex $<`; pdflatex `basename -s .tex $<`; pdflatex `basename -s .tex $<`
 	cp tex_out/$@ .
 
 clean:
