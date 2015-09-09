@@ -19,7 +19,7 @@ import pandas as pd
 %>
 
 %\documentclass[twocolumn]{bmcart}% uncomment this for twocolumn layout and comment line below
-\documentclass{article}
+\documentclass[10pt,twocolumn,linenumbers]{article}
 
 %%% Load packages
 \usepackage{amsthm,amsmath}
@@ -109,21 +109,21 @@ with open('busco.results.json') as fp:
 	busco_data = json.load(fp)
 %>
 
-\begin{table}[H]
+\begin{table*}[t]
 \caption {BUSCO Results}
 \begin{center}
 << echo=False, results='tex' >>=
 print pd.DataFrame(busco_data).to_latex()
 @
 \end{center}
-\end{table}
+\end{table*}
 
 \item Our assembly extends existing genes. Can be extracted from homology with lamp00 and 
 TransDecoder results.
 \item Our assembly includes novel genes. We show this by filtering out transcripts with homology 
 to the lamprey genome or transcriptome, and finding orthologies (recipricol best hits) for those 
 that remain. We do another level of filtering for false positives with the mygene API.
-\item Our assembly has already proven useful to lamprey researchers \cite{ren_genome-wide_2015}
+\item Our assembly has already proven useful to lamprey researchers \citep{ren_genome-wide_2015}
 (perhaps this goes in background?)
 \end{enumerate}
 
@@ -145,14 +145,14 @@ of intronic sequence unlikely to be covered above our chosen cutoff by any trans
 only exons, <% print '{:.2f}\%'.format(crossval_data['feature_props']['lamp10']['exon'] * 100.0) %> are covered, 
 exons being a basic feature of mRNAs.
 
-\begin{table}[H]
+\begin{table*}[t]
 \caption {Proportion of Annotations Covered by lamp00 and lamp10}
 \begin{center}
 << echo=False, results='tex'>>=
 print pd.DataFrame(crossval_data['feature_props']).to_latex()
 @
 \end{center}
-\end{table}
+\end{table*}
 
 Conversely, <% print '{:.2f}\%'.format(crossval_data['lamp10_tr_ov_prop'] * 100.0) %> of transcripts are 
 covered by a single feature, while <% print '{:.2f}\%'.format(crossval_data['lamp00_tr_ov_prop'] * 100.0) %> of 
@@ -163,14 +163,14 @@ the disparity. Examining the extend to which our overlaps are a superset, we can
 genome homologies by whether each transcript has only a homology, or both a homology and an annotation 
 overlap, as follows.
 
-\begin{table}[H]
+\begin{table*}[H]
 \caption {Proportion of Homologies and Annotation overlaps by Transcript in lamp00 and lamp10}
 \begin{center}
 << echo=False, results='tex'>>=
 print pd.read_json(crossval_data['transcript_hom_ann_props'], orient='split').set_index('presence').to_latex()
 @
 \end{center}
-\end{table}
+\end{table*}
 
 With so many transcripts having alignments to the genome but no corresponding annotation, it would
 be valuable to further understand which of these transcripts have protein homologies to other
@@ -180,23 +180,23 @@ these transcripts based on their homologies and orthologies with both zebrafish 
 
 % Add another column for not in genome at all
 
-\begin{table}[H]
+\begin{table*}[H]
 \caption {BLAST Best Hits for Transcripts Filtered by Database Presence}
 \begin{center}
 << echo=False, results='tex'>>=
 print pd.read_json(crossval_data['lamp10_danrer_braflo_homs'], orient='split').to_latex(index=False)
 @
 \end{center}
-\end{table}
+\end{table*}
 
-\begin{table}[H]
+\begin{table*}[H]
 \caption {BLAST Orthologies for Transcripts Filtered by Database Presence}
 \begin{center}
 << echo=False, results='tex'>>=
 print pd.read_json(crossval_data['lamp10_danrer_braflo_ortho'], orient='split').to_latex(index=False)
 @
 \end{center}
-\end{table}
+\end{table*}
 
 
 Futher, \% of the genome is covered by annotations, while \% is covered by alignments from lamp10; 
@@ -212,9 +212,9 @@ Here we talk about the genes we have shown to potentially be ancestral vertebrat
 at least a useful result in its own right, but it would be nice to find something more compelling
 here. Immune-related genes might be a good starting point. 
 
-%The assembly was produced using the Trinity assembler \cite{haas_novo_2013} after pre-processing with an in-house pipeline, described further in the methods.
+%The assembly was produced using the Trinity assembler \citep{haas_novo_2013} after pre-processing with an in-house pipeline, described further in the methods.
 
-%Go over assembly metrics. [Cite: assessing denovo trans metrics]. Metrics to include are transcript count, percent reads mapping [Sup. Table, perc reads per sample], number ORFs, transcripts mapping to genome, transcripts annotated, transcripts mapping to genome but not annotated, average unigene OHR \cite{t_oneil_assessing_2013}, accuracy, contiguity, and completeness \cite{martin_next-generation_2011}.
+%Go over assembly metrics. [Cite: assessing denovo trans metrics]. Metrics to include are transcript count, percent reads mapping [Sup. Table, perc reads per sample], number ORFs, transcripts mapping to genome, transcripts annotated, transcripts mapping to genome but not annotated, average unigene OHR \citep{t_oneil_assessing_2013}, accuracy, contiguity, and completeness \citep{martin_next-generation_2011}.
 
 %Discuss annotation: use of trinotate, blast databases, recipricol best-hits \citep{moreno-hagelsieb_choosing_2008}. 
 
@@ -268,8 +268,9 @@ cephalochordata lineages.
 
 
 % if your bibliography is in bibtex format, use those commands:
-\bibliographystyle{include/bmc-mathphys} % Style BST file
-\bibliography{2015-petMarSB}      % Bibliography file (usually '*.bib' )
+%\bibliographystyle{include/bmc-mathphys} % Style BST file
+\bibliography{2015-petMarSB}{}      % Bibliography file (usually '*.bib' )
+\bibliographystyle{plain}
 
 % or include bibliography directly:
 % \begin{thebibliography}

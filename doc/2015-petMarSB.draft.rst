@@ -63,6 +63,8 @@ our case through the following points:
 #. Our assembly has good recall of core vertebrate orthologs. Here we
    present BUSCO results, both for lamp00 and lamp10.
 
+   [t]
+
    | lllll & C & F & M & n
    | lamp10.fasta.metazoa. & 66%[D:43%] & 27% & 5.9% & 843
    | lamp10.fasta.vertebrata. & 38%[D:23%] & 10% & 50% & 3023
@@ -79,8 +81,7 @@ our case through the following points:
    API.
 
 #. Our assembly has already proven useful to lamprey researchers
-   :raw-latex:`\cite{ren_genome-wide_2015}` (perhaps this goes in
-   background?)
+   (perhaps this goes in background?)
 
 Discussion point: do we split this into two sections?
 
@@ -90,6 +91,8 @@ are biased by the inclusion of gene and transcripts features, both of
 which tend to contain large stretches of intronic sequence unlikely to
 be covered above our chosen cutoff by any transcript. When we consider
 only exons, 80.71% are covered, exons being a basic feature of mRNAs.
+
+[t]
 
 | lrr & lamp00 & lamp10
 | CDS & 0.919196 & 0.814513
@@ -110,6 +113,8 @@ our overlaps are a superset, we can break down transcript genome
 homologies by whether each transcript has only a homology, or both a
 homology and an annotation overlap, as follows.
 
+[H]
+
 | llrr & assembly & num & prop
 | presence & & &
 | +genome+ann & lamp00 & 11476 & 0.998868
@@ -125,11 +130,15 @@ evolution drives questions regarding loss and gain of genes within
 gnathostomes. To that end, we have subdivided these transcripts based on
 their homologies and orthologies with both zebrafish and amphioxus.
 
+[H]
+
 | llrr braflo\_best\_hom & danrer\_best\_hom & no\_ann & has\_ann
 | True & True & 36605 & 10293
 | True & False & 847 & 873
 | False & True & 7196 & 4445
 | False & False & 167958 & 296338
+
+[H]
 
 | llrr danrer\_ortho & braflo\_ortho & no\_ann & has\_ann
 | True & True & 3664 & 833
