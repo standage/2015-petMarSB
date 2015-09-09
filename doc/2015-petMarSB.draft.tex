@@ -72,7 +72,7 @@ Also includes accessions.
 
 [Table 1, samples]
 
-\section*{Analyses}
+\section*{Results}
 
 \subsection*{Many-sample de Novo Assembly}
 
@@ -99,6 +99,33 @@ homology (blast lamp10 against lamp00), that we cover the gene products of lamp0
 annotation, and that we cover the GTF gene annotations on the genome.
 \item Our assembly has good recall of core vertebrate orthologs. Here we present BUSCO results, 
 both for lamp00 and lamp10.
+
+
+
+\begin{table}[H]
+\caption {BUSCO Results}
+\begin{center}
+
+\begin{tabular}{lllll}
+\toprule
+{} &            C &     F &     M &     n \\
+\midrule
+lamp10.fasta.metazoa.       &   66\%[D:43\%] &   27\% &  5.9\% &   843
+\\
+lamp10.fasta.vertebrata.    &   38\%[D:23\%] &   10\% &   50\% &  3023
+\\
+petMar2.cdna.fa.metazoa.    &  48\%[D:6.4\%] &   15\% &   36\% &   843
+\\
+petMar2.cdna.fa.vertebrata. &  28\%[D:2.0\%] &  5.1\% &   66\% &  3023
+\\
+\bottomrule
+\end{tabular}
+
+
+
+\end{center}
+\end{table}
+
 \item Our assembly extends existing genes. Can be extracted from homology with lamp00 and 
 TransDecoder results.
 \item Our assembly includes novel genes. We show this by filtering out transcripts with homology 
@@ -109,6 +136,12 @@ that remain. We do another level of filtering for false positives with the mygen
 \end{enumerate}
 
 Discussion point: do we split this into two sections?
+
+% @ctb comments: consider dividing these results into 3 subsections:
+% 1) Validation from genome
+% 2) Validation from predicted transcripts (lamp00)
+% 3) Validation from ortho/homologs
+
 
 We find 73.93\%
  of annotations to be covered by a
@@ -234,8 +267,7 @@ by homology to a known protein. \% of transcript alignments are entirely contain
 
 Here we talk about the genes we have shown to potentially be ancestral vertebrate orthologs. This is
 at least a useful result in its own right, but it would be nice to find something more compelling
-here. Immune-related genes might be a good starting point.
-
+here. Immune-related genes might be a good starting point. 
 
 %The assembly was produced using the Trinity assembler \cite{haas_novo_2013} after pre-processing with an in-house pipeline, described further in the methods.
 

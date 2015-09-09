@@ -32,8 +32,8 @@ accessions.
 
 [Table 1, samples]
 
-Analyses
-========
+Results
+=======
 
 Many-sample de Novo Assembly
 ----------------------------
@@ -63,6 +63,12 @@ our case through the following points:
 #. Our assembly has good recall of core vertebrate orthologs. Here we
    present BUSCO results, both for lamp00 and lamp10.
 
+   | lllll & C & F & M & n
+   | lamp10.fasta.metazoa. & 66%[D:43%] & 27% & 5.9% & 843
+   | lamp10.fasta.vertebrata. & 38%[D:23%] & 10% & 50% & 3023
+   | petMar2.cdna.fa.metazoa. & 48%[D:6.4%] & 15% & 36% & 843
+   | petMar2.cdna.fa.vertebrata. & 28%[D:2.0%] & 5.1% & 66% & 3023
+
 #. Our assembly extends existing genes. Can be extracted from homology
    with lamp00 and TransDecoder results.
 
@@ -73,7 +79,8 @@ our case through the following points:
    API.
 
 #. Our assembly has already proven useful to lamprey researchers
-   (perhaps this goes in background?)
+   :raw-latex:`\cite{ren_genome-wide_2015}` (perhaps this goes in
+   background?)
 
 Discussion point: do we split this into two sections?
 
