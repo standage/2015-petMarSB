@@ -12,16 +12,32 @@ def parse_busco(fn):
                 tokens = ln.split(',')
                 for token in tokens:
                     key, _, val = token.partition(':')
-                    res[key.strip()] = val.strip()
+                    key = key.strip()
+                    val = val.strip().strip('%')
+                    if key == 'C':
+                        valc, _, vald = val.partition('%')
+                        valc = valc.strip()
+                        vald = vald.strip('D:][%')
+                        res['C'] = valc
+                        res['D'] = vald
+                    else:
+                        res[key.strip()] = val.strip().strip('%')
     return res
 
-def busco_to_df(fn_list):
+def busco_to_df(fn_list, dbs=['metazoa', 'vertebrata']):
 
     data = []
     for fn in fn_list:
         data.append(parse_busco(fn))
 
-    return pd.DataFrame(data, index=[os.path.basename(fn)[14:-14] for fn in fn_list])
+    df = pd.DataFrame(data)
+    df['fn'] = [os.path.basename(fn)[14:-14].strip('.') for fn in fn_list]
+    df['db'] = None
+    for db in dbs:
+        idx = df.fn.str.contains(db)
+        df.loc[idx,'db'] = db
+        df.loc[idx,'fn'] = df.loc[idx, 'fn'].apply(lambda fn: fn[:fn.find(db)].strip('. '))
+    return df
 
 if __name__ == '__main__':
 
@@ -33,4 +49,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     df = busco_to_df(args.busco_files)
-    df.to_json(args.output)
+    df = df.pivot('fn', 'db').stack()
+    df.reset_index().to_json(args.output)
