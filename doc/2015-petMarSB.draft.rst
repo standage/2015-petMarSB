@@ -65,11 +65,11 @@ our case through the following points:
 
    [t]
 
-   | lllll & C & F & M & n
-   | lamp10.fasta.metazoa. & 66%[D:43%] & 27% & 5.9% & 843
-   | lamp10.fasta.vertebrata. & 38%[D:23%] & 10% & 50% & 3023
-   | petMar2.cdna.fa.metazoa. & 48%[D:6.4%] & 15% & 36% & 843
-   | petMar2.cdna.fa.vertebrata. & 28%[D:2.0%] & 5.1% & 66% & 3023
+   | lllllll & & C(%) & D(%) & F(%) & M(%) & n(%)
+   | lamp10.fasta & metazoa & & & & &
+   | & vertebrata & 66 & 43 & 27 & 5.9 & 843
+   | petMar2.cdna.fa & metazoa & 38 & 23 & 10 & 50 & 3023
+   | & vertebrata & 48 & 6.4 & 15 & 36 & 843
 
 #. Our assembly extends existing genes. Can be extracted from homology
    with lamp00 and TransDecoder results.

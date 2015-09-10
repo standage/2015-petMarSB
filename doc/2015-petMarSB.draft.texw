@@ -15,6 +15,7 @@
 <%
 import json
 import pandas as pd
+from tabulate import tabulate as tb
 %run -i ../notebooks/common.ipy 
 %>
 
@@ -113,7 +114,9 @@ with open('busco.results.json') as fp:
 \caption {BUSCO Results}
 \begin{center}
 << echo=False, results='tex' >>=
-print pd.DataFrame(busco_data).to_latex()
+#pd.MultiIndex.from_product([['metazoa', 'vertebrata'], ['C', 'D', 'F', 'M', 'n']])
+print pd.DataFrame(busco_data).set_index(['fn', 'db']).to_latex()
+#print tb(pd.DataFrame(busco_data).set_index(['fn', 'db']), tablefmt='latex_booktabs')
 @
 \end{center}
 \end{table*}
