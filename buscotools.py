@@ -18,10 +18,12 @@ def parse_busco(fn):
                         valc, _, vald = val.partition('%')
                         valc = valc.strip()
                         vald = vald.strip('D:][%')
-                        res['C'] = valc
-                        res['D'] = vald
+                        res['C(%)'] = valc
+                        res['D(%)'] = vald
                     else:
-                        res[key.strip()] = val.strip().strip('%')
+                        if key != 'n':
+                           key += '(%)'
+                        res[key] = val.strip().strip('%')
     return res
 
 def busco_to_df(fn_list, dbs=['metazoa', 'vertebrata']):
