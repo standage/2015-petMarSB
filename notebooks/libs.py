@@ -37,3 +37,13 @@ from IPython.display import HTML
 
 import mygene
 from bioservices import UniProt
+
+
+cwd = os.getcwd()
+sys.path.insert(0, os.path.join('../', cwd))
+
+import blasttools
+import buscotools
+import hmmertools
+
+
