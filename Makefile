@@ -21,7 +21,4 @@ databases: FORCE
 test: FORCE
 	./pipeline run --resources-metadata test/resources.json --config-metadata test/config.json --local-file-dir test/ --assembly-file lamp-test.fasta
 
-clean: FORCE
-	./pipeline clean --resources-metadata resources.json --config-metadata config.json
-
 FORCE:
