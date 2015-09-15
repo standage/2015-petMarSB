@@ -1,7 +1,7 @@
 #!/usr/bin/env ipython
 from __future__ import print_function
 
-from libs import *
+from ..libs import *
 
 '''
 Libraries, functions, settings common to all petmar notebooks.
