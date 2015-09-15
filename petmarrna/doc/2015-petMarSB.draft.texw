@@ -16,6 +16,7 @@
 import json
 import pandas as pd
 from tabulate import tabulate as tb
+from petmarrna import buscotools as bt
 %run -i ../notebooks/common.ipy 
 %>
 
