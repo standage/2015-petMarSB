@@ -498,7 +498,7 @@ def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg):
                         os.path.join('run_' + output_dir, 'short_summary_' + output_dir.rstrip('/'))],
             'file_dep': [input_filename],
             'uptodate': [run_once],
-            'clean': [(clean_folder, [output_dir])]}
+            'clean': [(clean_folder, ['run_' + output_dir])]}
 
 @create_task_object
 def hmmpress_task(db_filename, label=''):
