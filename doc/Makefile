@@ -1,14 +1,11 @@
-BIBFILE=2015-petMarSB.bib
+BIBFILE=petmarrna.bib
 
-all: 2015-petMarSB.draft.pdf 2015-petMarSB.draft.rst
+all: petmarrna.draft.pdf petmarrna.draft.rst
 
-2015-petMarSB.draft.tex: 2015-petMarSB.draft.texw
-	Pweave -f tex 2015-petMarSB.draft.texw -s ipython
-
-2015-petMarSB.draft.rst: 2015-petMarSB.draft.tex
+petmarrna.draft.rst: petmarrna.draft.tex
 	pandoc $< -o $@
 
-2015-petMarSB.draft.pdf: 2015-petMarSB.draft.tex
+petmarrna.draft.pdf: petmarrna.draft.tex
 	rm -rf tex_out
 	mkdir -p tex_out
 	cd tex_out; ln -s ../$<
@@ -17,4 +14,4 @@ all: 2015-petMarSB.draft.pdf 2015-petMarSB.draft.rst
 	cp tex_out/$@ .
 
 clean:
-	rm -rf tex_out 2015-petMarSB.draft.pdf 2015-petMarSB.draft.tex
+	rm -rf tex_out petmarrna.draft.pdf petmarrna.draft.tex

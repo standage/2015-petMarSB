@@ -16,7 +16,8 @@
 import json
 import pandas as pd
 from tabulate import tabulate as tb
-%run -i ../notebooks/common.ipy 
+from petmarrna import buscotools as bt
+%run -i common.ipy 
 %>
 
 %\documentclass[twocolumn]{bmcart}% uncomment this for twocolumn layout and comment line below
@@ -106,8 +107,9 @@ annotation, and that we cover the GTF gene annotations on the genome.
 both for lamp00 and lamp10.
 
 <%
-with open('busco.results.json') as fp:
+with open('results/busco.results.json') as fp:
 	busco_data = json.load(fp)
+	busco_data = pd.DataFrame(busco_data)
 %>
 
 \begin{table*}[t]
@@ -115,7 +117,7 @@ with open('busco.results.json') as fp:
 \begin{center}
 << echo=False, results='tex' >>=
 #pd.MultiIndex.from_product([['metazoa', 'vertebrata'], ['C', 'D', 'F', 'M', 'n']])
-print pd.DataFrame(busco_data).set_index(['fn', 'db']).to_latex()
+print bt.to_latex(busco_data)
 #print tb(pd.DataFrame(busco_data).set_index(['fn', 'db']), tablefmt='latex_booktabs')
 @
 \end{center}
@@ -137,7 +139,7 @@ Discussion point: do we split this into two sections?
 % 2) Validation from predicted transcripts (lamp00)
 % 3) Validation from ortho/homologs
 <%
-with open('petmar-cross-validate.results.json') as fp:
+with open('results/petmar-cross-validate.results.json') as fp:
     crossval_data = json.load(fp)
 %>
 
