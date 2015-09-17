@@ -1,7 +1,7 @@
 #!/usr/bin/env ipython
 from __future__ import print_function
 
-from ..libs import *
+from petmarrna.libs import *
 
 '''
 Libraries, functions, settings common to all petmar notebooks.
@@ -11,8 +11,8 @@ Libraries, functions, settings common to all petmar notebooks.
 # Functions, settings #
 #######################
 
-res_fn = '../resources.json'
-cfg_fn = '../config.json'
+res_fn = 'resources.json'
+cfg_fn = 'config.json'
 
 with open(res_fn, 'r') as fp:
     print('** Using data resources found in {c}'.format(c=res_fn), file=sys.stderr)
@@ -26,7 +26,7 @@ sample_df = resources_df[resources_df.meta_type == 'sample']
 prefix = config['pipeline']['prefix']
 
 def wdir(fn=''):
-    return os.path.join(os.path.join('../', config['pipeline']['work_dir']), fn)
+    return os.path.join(os.path.join(config['pipeline']['work_dir']), fn)
 
 def figdir(fn=''):
     return os.path.join('./figures/', fn)
