@@ -501,6 +501,35 @@ def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg):
             'clean': [(clean_folder, ['run_' + output_dir])]}
 
 @create_task_object
+def cmpress_task(db_fileame):
+
+    cmd = 'cmpress ' + db_filename
+
+    return {'name': 'cmpress:' + os.path.basename(db_filename),
+            'title': title_with_actions,
+            'actions': [cmd],
+            'targets': [db_filename + ext for ext in ['.i1f', '.i1i', '.i1m', '.i1p']],
+            'file_dep': [db_filename],
+            'clean': [clean_targets]}
+
+@create_task_object
+def cmscan_task(input_filename, output_filename, db_filename, cmscan_cfg, label=''):
+    
+    name = 'cmscan:' + os.path.basename(input_filename) + '.x.' + \
+           os.path.basename(db_filename)
+
+    n_threads = cmscan_cfg['n_threads']
+    cmd = 'cmscan --cpu {n_threads} --cut_ga --rfam --nohmmonly --tblout {output_filename}.tbl'\
+          ' {db_filename} {input_filename} > {output_filename}.cmscan'.format(**locals())
+
+    return {'name': name,
+            'title': title_with_actions,
+            'actions': [cmd],
+            'file_dep': [input_filename, db_filename, db_filename + 'i3p'],
+            'targets': [output_filename + '.tbl', output_filename + '.cmscan'],
+            'clean': [clean_targets]}
+
+@create_task_object
 def hmmpress_task(db_filename, label=''):
     
     if not label:
