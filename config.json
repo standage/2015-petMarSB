@@ -44,6 +44,11 @@
             "n_threads": 8
         },
 
+		"cmscan": {
+		    "n_threads": 8,
+			"db_dir": "cm_db"
+		},
+
         "khmer": {
             "normalize": {
                 "single": { 

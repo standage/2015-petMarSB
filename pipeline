@@ -30,7 +30,6 @@ def get_database_prep_tasks(resources_df):
     tasks = []
     for key, row in resources_df[resources_df.access == 'remote_file'].iterrows():
         tasks.append(download_and_gunzip_task(row.url, row.filename))
-
     
     # Programmatically query uniprot
     for key, row in  resources_df[(resources_df.access == 'remote_query') & \
@@ -305,6 +304,17 @@ def main():
 
         tasks.extend(busco_tasks)
         tasks.append(group_task('busco', [t.name for t in busco_tasks]))
+
+        '''
+        infernal and Rfam
+        '''
+        cmscan_cfg = config['pipeline']['cmscan']
+        cmscan_tasks = []
+        cmscan_tasks.append(download_and_untar_task(resources_df.ix['rfam'].url,
+                                                    cmscan_cfg['db_dir'],
+                                                    label='rfam'))
+
+
 
         '''
         Abundance estimation (bowtie2, eXpress)
