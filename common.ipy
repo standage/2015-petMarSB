@@ -37,7 +37,7 @@ def len_func(fn):
     return int(N[0])
 
 resources_df['size'] = resources_df[(resources_df.meta_type != 'sample') &
-                                    (resources_df.meta_type != 'huge_fasta_database')].filename.apply(len_func)
+                                    (resources_df.meta_type == 'fasta_database')].filename.apply(len_func)
 
 
 outfmt6 = ['sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', \
