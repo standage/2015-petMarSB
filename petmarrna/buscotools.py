@@ -41,7 +41,7 @@ def busco_to_df(fn_list, dbs=['metazoa', 'vertebrata']):
         df.loc[idx,'fn'] = df.loc[idx, 'fn'].apply(lambda fn: fn[:fn.find(db)].strip('. '))
     return df
 
-def to_latex(df, dbs=['metazoa', 'vertebrata']):
+def formatted(df, dbs=['metazoa', 'vertebrata']):
 
     df.set_index('fn', inplace=True)
     columns = pd.MultiIndex.from_product([dbs, ['C(%)', 'D(%)', 'F(%)', 'M(%)', 'n']])
@@ -51,7 +51,7 @@ def to_latex(df, dbs=['metazoa', 'vertebrata']):
         del separated[-1]['db']
     combined = pd.concat(separated, axis=1)
     combined.columns = columns
-    return combined.to_latex()
+    return combined
 
 if __name__ == '__main__':
 
