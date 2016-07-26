@@ -66,3 +66,4 @@ doc/tex_out/
 # hpc
 **.sh.e*
 **.sh.o*
+pmar-env/

@@ -18,7 +18,7 @@ import jinja2
 import pandas as pd
 import screed
 
-from peasoup.tasks import BlastTask
+#from peasoup.tasks import BlastTask
 
 def clean_folder(target):
     try:
@@ -75,7 +75,7 @@ def diginorm_task(input_files, dg_cfg, label, ct_outfn=None):
 def filter_abund_task(input_files, ct_file, fab_cfg, label):
 
     name = 'filter_abund_' + label
-    
+
     min_abund = fab_cfg['min_abund']
     coverage = fab_cfg['coverage']
 
@@ -142,7 +142,7 @@ def uniprot_query_task(query, target_fn, fmt='fasta', label=''):
 
 @create_task_object
 def truncate_fasta_header_task(fasta_fn, length=500):
-    
+
     def func():
         tmp_fn = fasta_fn + '.tmp'
         with open(tmp_fn, 'wb') as fp:
@@ -154,7 +154,7 @@ def truncate_fasta_header_task(fasta_fn, length=500):
                 fp.write('>{}\n{}\n'.format(name, r.sequence))
 
         shutil.move(tmp_fn, fasta_fn)
-    
+
     name = 'truncate_fasta_header_{fasta_fn}'.format(**locals())
 
     return {'name': name,
@@ -197,33 +197,33 @@ def blast_format_task(db_fn, db_out_fn, db_type):
             'file_dep': [db_fn],
             'clean': [clean_targets, 'rm -f {target_fn}.*'.format(**locals())] }
 
-def blast_task(row, config, assembly):
-    ''' TODO: Remove peasoup usage
-    '''
-    blast_threads = config['pipeline']['blast']['threads']
-    blast_params = config['pipeline']['blast']['params']
-    blast_evalue = config['pipeline']['blast']['evalue']
-
-    db_name = row.filename + '.db'
-
-    t1 = '{0}.x.{1}.tsv'.format(assembly, db_name)
-    t2 = '{0}.x.{1}.tsv'.format(db_name, assembly)
-
-
-    if row.db_type == 'prot':
-        yield BlastTask('blastx', assembly, db_name, t1,
-                        num_threads=blast_threads, evalue=blast_evalue,
-                        params=blast_params).tasks().next()
-        yield BlastTask('tblastn', row.filename, '{}.db'.format(assembly),
-                        t2, num_threads=blast_threads, evalue=blast_evalue,
-                        params=blast_params).tasks().next()
-    else:
-        yield BlastTask('blastn', assembly, db_name, t1,
-                        num_threads=blast_threads, evalue=blast_evalue,
-                        params=blast_params).tasks().next()
-        yield BlastTask('blastn', row.filename, '{}.db'.format(assembly),
-                        t2, num_threads=blast_threads, evalue=blast_evalue,
-                        params=blast_params).tasks().next()
+#def blast_task(row, config, assembly):
+#    ''' TODO: Remove peasoup usage
+#    '''
+#    blast_threads = config['pipeline']['blast']['threads']
+#    blast_params = config['pipeline']['blast']['params']
+#    blast_evalue = config['pipeline']['blast']['evalue']
+#
+#    db_name = row.filename + '.db'
+#
+#    t1 = '{0}.x.{1}.tsv'.format(assembly, db_name)
+#    t2 = '{0}.x.{1}.tsv'.format(db_name, assembly)
+#
+#
+#    if row.db_type == 'prot':
+#        yield BlastTask('blastx', assembly, db_name, t1,
+#                        num_threads=blast_threads, evalue=blast_evalue,
+#                        params=blast_params).tasks().next()
+#        yield BlastTask('tblastn', row.filename, '{}.db'.format(assembly),
+#                        t2, num_threads=blast_threads, evalue=blast_evalue,
+#                        params=blast_params).tasks().next()
+#    else:
+#        yield BlastTask('blastn', assembly, db_name, t1,
+#                        num_threads=blast_threads, evalue=blast_evalue,
+#                        params=blast_params).tasks().next()
+#        yield BlastTask('blastn', row.filename, '{}.db'.format(assembly),
+#                        t2, num_threads=blast_threads, evalue=blast_evalue,
+#                        params=blast_params).tasks().next()
 
 @create_task_object
 def link_file_task(src):
@@ -260,7 +260,7 @@ def bowtie2_build_task(input_fn, db_basename, bowtie2_cfg):
 
     extra_args = bowtie2_cfg['extra_args']
     cmd = 'bowtie2-build {extra_args} {input_fn} {db_basename}'.format(**locals())
-    
+
     targets = [db_basename+ext for ext in \
                 ['.1.bt2', '.2.bt2', '.3.bt2', '.4.bt2', '.rev.1.bt2', '.rev.2.bt2']]
     targets.append(db_basename)
@@ -286,7 +286,7 @@ def bowtie2_align_task(db_basename, target_fn, bowtie2_cfg, left_fn='', right_fn
     n_threads = bowtie2_cfg['n_threads']
     extra_args = bowtie2_cfg['extra_args']
     cmd = 'bowtie2 -p {n_threads} {extra_args} {encoding} {read_fmt} -x {db_basename} '.format(**locals())
-    
+
     file_dep = [db_basename]
     targets = []
 
@@ -336,7 +336,7 @@ def eXpress_task(transcripts_fn, hits_fn, results_folder):
 
 @create_task_object
 def samtools_sort_task(bam_fn):
-    
+
     cmd = 'samtools sort -n {bam_fn} {bam_fn}.sorted'.format(**locals())
 
     name = 'samtools_sort_{bam_fn}'.format(**locals())
@@ -408,7 +408,7 @@ def aggregate_express_task(results_files, tpm_target_fn, eff_target_fn, tot_targ
             'file_dep': results_files}
 
 @create_task_object
-def trimmomatic_pe_task(left_in, right_in, left_paired_out, left_unpaired_out, 
+def trimmomatic_pe_task(left_in, right_in, left_paired_out, left_unpaired_out,
                      right_paired_out, right_unpaired_out, encoding, trim_cfg):
 
     assert encoding in ['phred33', 'phred64']
@@ -479,7 +479,7 @@ def group_task(group_name, task_names):
 # python3 BUSCO_v1.1b1/BUSCO_v1.1b1.py -in petMar2.cdna.fa -o petMar2.cdna.busco.test -l vertebrata/ -m trans -c 4
 @create_task_object
 def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg):
-    
+
     name = '_'.join(['busco', input_filename, os.path.basename(busco_db_dir)])
 
     assert input_type in ['genome', 'OGS', 'trans']
@@ -487,14 +487,14 @@ def busco_task(input_filename, output_dir, busco_db_dir, input_type, busco_cfg):
     busco_path = busco_cfg['path']
 
     cmd = 'python3 {busco_path} -in {in_fn} -o {out_dir} -l {db_dir} '\
-            '-m {in_type} -c {n_threads}'.format(busco_path=busco_path, 
-            in_fn=input_filename, out_dir=output_dir, db_dir=busco_db_dir, 
+            '-m {in_type} -c {n_threads}'.format(busco_path=busco_path,
+            in_fn=input_filename, out_dir=output_dir, db_dir=busco_db_dir,
             in_type=input_type, n_threads=n_threads)
 
     return {'name': name,
             'title': title_with_actions,
             'actions': [cmd],
-            'targets': ['run_' + output_dir, 
+            'targets': ['run_' + output_dir,
                         os.path.join('run_' + output_dir, 'short_summary_' + output_dir.rstrip('/'))],
             'file_dep': [input_filename],
             'uptodate': [run_once],
@@ -514,7 +514,7 @@ def cmpress_task(db_fileame):
 
 @create_task_object
 def cmscan_task(input_filename, output_filename, db_filename, cmscan_cfg, label=''):
-    
+
     name = 'cmscan:' + os.path.basename(input_filename) + '.x.' + \
            os.path.basename(db_filename)
 
@@ -531,7 +531,7 @@ def cmscan_task(input_filename, output_filename, db_filename, cmscan_cfg, label=
 
 @create_task_object
 def hmmpress_task(db_filename, label=''):
-    
+
     if not label:
         label = 'hmmpress_' + os.path.basename(db_filename)
 
@@ -590,7 +590,7 @@ def transdecoder_predict_task(input_filename, db_filename, transdecoder_cfg, lab
 
     cmd = 'TransDecoder.Predict -t {input_filename} --retain_pfam_hits {db_filename} \
             --retain_long_orfs {orf_cutoff} --cpu {n_threads}'.format(**locals())
-    
+
     return {'name': label,
             'title': title_with_actions,
             'actions': [cmd],

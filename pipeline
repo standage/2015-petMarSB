@@ -3,38 +3,37 @@ from __future__ import print_function
 
 import argparse
 
-from petmarrna.annotate import *
 from petmarrna.tasks import *
 
 from doit.cmd_base import TaskLoader
 from doit.doit_cmd import DoitMain
 
 def run_tasks(tasks, args, config={'verbosity': 2}):
-    
+
     if type(tasks) is not list:
         raise TypeError('tasks must be a list')
-   
+
     class Loader(TaskLoader):
         @staticmethod
         def load_tasks(cmd, opt_values, pos_args):
             return tasks, config
-   
+
     DoitMain(Loader()).run(args)
 
 def get_database_prep_tasks(resources_df):
     '''
     Database prep, homology search
-    
+
     First, we get remote flat files.
     '''
     tasks = []
     for key, row in resources_df[resources_df.access == 'remote_file'].iterrows():
         tasks.append(download_and_gunzip_task(row.url, row.filename))
-    
+
     # Programmatically query uniprot
     for key, row in  resources_df[(resources_df.access == 'remote_query') & \
                                   (resources_df.q_type == 'uniprot')].iterrows():
-   
+
         tasks.append(uniprot_query_task(row.terms, row.filename, label=row.filename))
 
     # Prep HMM profiles
@@ -52,7 +51,7 @@ def get_database_prep_tasks(resources_df):
     return tasks
 
 def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
-    
+
     tasks = []
 
     '''
@@ -93,7 +92,7 @@ def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
                                             singleton_fn=sample_fn, encoding=encoding)
             tasks.append(align_task)
             bam_fn = target_fn + '.bam'
-        
+
         # Generate directory name for eXpress results
         express_dir = bam_fn.split('.bam')[0]
         express_task = eXpress_task(assembly_fn, bam_fn, express_dir)
@@ -108,12 +107,12 @@ def get_abundance_estimation_tasks(assembly_fn, sample_df, config):
                                       '{pref}.eXpress.eff.tsv'.format(pref=assembly_fn),
                                       '{pref}.eXpress.tot.tsv'.format(pref=assembly_fn))
     tasks.append(agg_task)
-    
+
     return tasks
 
 def get_sample_prep_tasks(sample_df, config, data_dir):
     tasks = []
-    
+
     # This list will track the files output by the first pass of digital normalization
     dg_files = []
     for key, row in sample_df.iterrows():
@@ -132,7 +131,7 @@ def get_sample_prep_tasks(sample_df, config, data_dir):
             left_fn = row.filename + '.1'
             right_fn = row.filename + '.2'
             orphan_fn = row.filename + '.0'
-            trim_pe_task = trimmomatic_pe_task(left_fn, right_fn, 
+            trim_pe_task = trimmomatic_pe_task(left_fn, right_fn,
                                                left_fn + '.pe.trim', left_fn + '.se.trim',
                                                right_fn + '.pe.trim', right_fn + '.se.trim',
                                                row.phred, trim_cfg)
@@ -167,7 +166,7 @@ def get_sample_prep_tasks(sample_df, config, data_dir):
                                     row.filename + '.qc.fq.keep')
             tasks.append(dg_task)
             dg_files.append(row.filename + '.qc.fq.keep')
-            
+
     # Now run the pooled second pass of digital normalization
     dg_cfg = config['pipeline']['khmer']['normalize']['pooled']
     ct_fn = config['pipeline']['prefix'] + '.all-samples.pooled.ct'
@@ -249,22 +248,22 @@ def main():
         '''
         BLAST
         '''
-        blast_iters = []
-        for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
-
-            blast_iters.extend([blast_task(row, config, fn) \
-                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
-                                                   (resources_df.meta_type != 'assembly')].iterrows()])
-
-        blast_iters.extend([blast_task(row, config, resources_df.ix['petMar2_cdna'].filename) \
-                        for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
-                                                   (resources_df.filename != 'petMar2.cdna.fa')].iterrows()])
-
-        blast_tasks = []
-        for tskiter in blast_iters:
-            blast_tasks.extend([dict_to_task(tsk) for tsk in tskiter])
-        tasks.extend(blast_tasks)
-        tasks.append(group_task('blast', [t.name for t in blast_tasks]))
+        #blast_iters = []
+        #for fn in resources_df[resources_df.meta_type == 'assembly'].filename:
+#
+        #    blast_iters.extend([blast_task(row, config, fn) \
+        #                for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
+        #                                           (resources_df.meta_type != 'assembly')].iterrows()])
+#
+        #blast_iters.extend([blast_task(row, config, resources_df.ix['petMar2_cdna'].filename) \
+        #                for _, row in resources_df[(resources_df.meta_type == 'fasta_database') &
+        #                                           (resources_df.filename != 'petMar2.cdna.fa')].iterrows()])
+#
+        #blast_tasks = []
+        #for tskiter in blast_iters:
+        #    blast_tasks.extend([dict_to_task(tsk) for tsk in tskiter])
+        #tasks.extend(blast_tasks)
+        #tasks.append(group_task('blast', [t.name for t in blast_tasks]))
 
         '''
         TransDecoder and hmmscan
@@ -273,7 +272,7 @@ def main():
         dbfn = resources_df.ix['pfamA'].filename
         tdc_tasks.append(transdecoder_orf_task(assembly_fn, config['pipeline']['transdecoder']))
         pep_fn = os.path.join(assembly_fn+'.transdecoder_dir', 'longest_orfs.pep')
-        tdc_tasks.append(hmmscan_task(pep_fn, assembly_fn + '.pfam-A.out', dbfn, 
+        tdc_tasks.append(hmmscan_task(pep_fn, assembly_fn + '.pfam-A.out', dbfn,
                                       config['pipeline']['hmmscan']))
         tdc_tasks.append(transdecoder_predict_task(assembly_fn, assembly_fn + '.pfam-A.out',
                          config['pipeline']['transdecoder']))
@@ -286,7 +285,7 @@ def main():
 
         busco_cfg = config['pipeline']['busco']
         busco_tasks = []
-        busco_vert_db_task = download_and_untar_task(busco_cfg['vert_url'], 
+        busco_vert_db_task = download_and_untar_task(busco_cfg['vert_url'],
                                                      busco_cfg['db_dir'],
                                                      label='vertebrata')
         busco_metz_db_task = download_and_untar_task(busco_cfg['metazoa_url'],
@@ -298,8 +297,8 @@ def main():
         for fn in [assembly_fn, resources_df.ix['petMar2_cdna'].filename]:
             for db in ['metazoa', 'vertebrata']:
                 output_dir = '.'.join([fn, db, busco_cfg['output_suffix']])
-                busco_tasks.append(busco_task(fn, output_dir, 
-                                   os.path.join(busco_cfg['db_dir'], db), 
+                busco_tasks.append(busco_task(fn, output_dir,
+                                   os.path.join(busco_cfg['db_dir'], db),
                                    'trans', busco_cfg))
 
         tasks.extend(busco_tasks)
@@ -325,14 +324,14 @@ def main():
         tasks.append(group_task('abundance', [t.name for t in abundance_tasks]))
 
 
-        blast_targets = list(resources_df[(resources_df.meta_type == 'fasta_database') &
-                                          (resources_df.meta_type != 'assembly')].filename)
-        ann_task = aggregate_annotations_task(assembly_fn, blast_targets, 
-                                              assembly_fn+'.transdecoder.gff3',
-                                              assembly_fn+'.pfam-A.out', sample_df,
-                                              assembly_fn+'.eXpress.tpm.tsv',
-                                              assembly_fn+'.annotations.h5')
-        tasks.append(ann_task)
+        #blast_targets = list(resources_df[(resources_df.meta_type == 'fasta_database') &
+        #                                  (resources_df.meta_type != 'assembly')].filename)
+        #ann_task = aggregate_annotations_task(assembly_fn, blast_targets,
+        #                                      assembly_fn+'.transdecoder.gff3',
+        #                                      assembly_fn+'.pfam-A.out', sample_df,
+        #                                      assembly_fn+'.eXpress.tpm.tsv',
+        #                                      assembly_fn+'.annotations.h5')
+        #tasks.append(ann_task)
 
 
         if args.print_tasks:
